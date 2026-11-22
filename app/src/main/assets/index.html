@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Spese Auto</title>
+<style>
+  :root{
+    --bg:#f4f5f7; --card:#fff; --ink:#1d2330; --muted:#6b7280; --line:#e5e7eb;
+    --acc:#2563eb; --acc-soft:#e8efff; --ok:#15803d; --warn:#b45309; --bad:#b91c1c;
+    --luca:#2563eb; --giada:#c2410c;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,Roboto,sans-serif}
+  header{position:sticky;top:0;z-index:5;background:var(--acc);color:#fff;padding:calc(env(safe-area-inset-top) + 14px) 16px 14px}
+  header h1{margin:0;font-size:19px;font-weight:600}
+  header small{opacity:.85}
+  main{padding:12px 12px 96px}
+  .card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+  .card h2{margin:0 0 10px;font-size:15px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:600}
+  label{display:block;font-size:13px;color:var(--muted);margin:8px 0 4px}
+  input,select,textarea{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
+  textarea{min-height:90px;font-size:13px}
+  .row{display:flex;gap:8px}.row>*{flex:1}
+  button{font:inherit;border:0;border-radius:10px;padding:12px 14px;background:var(--acc);color:#fff;font-weight:600;cursor:pointer}
+  button.sec{background:var(--acc-soft);color:var(--acc)}
+  button.ghost{background:transparent;color:var(--muted);padding:6px 8px;font-weight:500}
+  button.full{width:100%;margin-top:10px}
+  button:disabled{opacity:.5}
+  .seg{display:flex;background:var(--bg);border-radius:10px;padding:3px}
+  .seg button{flex:1;background:transparent;color:var(--muted);padding:9px}
+  .seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.1)}
+  .routes{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .route{background:var(--acc-soft);color:var(--ink);text-align:left;padding:12px;border-radius:12px;font-weight:500}
+  .route b{display:block;font-size:15px}
+  .route span{font-size:12px;color:var(--muted)}
+  .empty{color:var(--muted);font-size:14px}
+  .item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .item:last-child{border-bottom:0}
+  .item .ic{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-size:16px;flex:none;background:var(--bg)}
+  .item .tx{flex:1;min-width:0}
+  .item .tx b{display:block;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .item .tx span{font-size:12px;color:var(--muted)}
+  .item .am{font-weight:600;white-space:nowrap}
+  .tag{font-size:11px;padding:2px 7px;border-radius:99px;font-weight:600}
+  .tag.L{background:#e8efff;color:var(--luca)} .tag.G{background:#fff1e8;color:var(--giada)}
+  .big{font-size:26px;font-weight:700;margin:4px 0}
+  .result{border-radius:14px;padding:16px;color:#fff;background:var(--ok);margin-bottom:12px}
+  .result.rev{background:var(--giada)} .result.zero{background:var(--muted)}
+  .result p{margin:0;opacity:.9}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  td{padding:6px 0;vertical-align:top} td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+  tr.sub td{color:var(--muted);font-size:13px;padding-top:0} tr.sub td:first-child{padding-left:14px}
+  tr.tot td{border-top:1px solid var(--line);font-weight:600;padding-top:8px}
+  .note{font-size:12px;color:var(--muted);margin-top:8px}
+  .monthbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .monthbar b{font-size:17px;text-transform:capitalize}
+  .monthbar button{background:#fff;color:var(--ink);width:44px;padding:10px 0}
+  nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:#fff;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:5}
+  nav button{flex:1;background:none;color:var(--muted);border-radius:0;padding:9px 2px 10px;font-size:12px;font-weight:500}
+  nav button i{display:block;font-style:normal;font-size:20px;line-height:1.2}
+  nav button.on{color:var(--acc)}
+  .found{font-size:13px;color:var(--muted);margin-top:4px}
+  .calcres{background:var(--acc-soft);border-radius:10px;padding:10px 12px;margin-top:10px}
+  #toast{position:fixed;left:12px;right:12px;bottom:84px;background:#1d2330;color:#fff;border-radius:12px;padding:12px 14px;display:none;align-items:center;gap:10px;z-index:9}
+  #toast span{flex:1} #toast button{background:transparent;color:#93c5fd;padding:4px 6px}
+  .hidden{display:none!important}
+  .chk{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:15px;color:var(--ink)}
+  .chk input{width:20px;height:20px}
+</style>
+</head>
+<body>
+<header><h1>🚗 Spese Auto</h1><small>Luca &amp; Giada</small></header>
+<main>
+
+<!-- ============ AGGIUNGI ============ -->
+<section id="tab-add">
+  <div class="card">
+    <label style="margin-top:0">Data</label>
+    <input type="date" id="addDate">
+  </div>
+
+  <div class="card">
+    <h2>Percorsi rapidi</h2>
+    <div id="routeBtns" class="routes"></div>
+    <p class="note">Tocca un percorso per registrarlo nella data scelta sopra.</p>
+  </div>
+
+  <div class="card">
+    <h2>Nuovo viaggio</h2>
+    <label>Partenza</label>
+    <input id="from" placeholder="es. Cinisello Balsamo">
+    <label>Arrivo</label>
+    <input id="to" placeholder="es. Monticelli Brusati">
+    <button class="sec full" id="btnCalc">📍 Calcola km in auto</button>
+    <div id="calcInfo" class="found"></div>
+
+    <div class="row">
+      <div><label>Km (solo andata)</label><input id="tripKm" inputmode="decimal" placeholder="0"></div>
+      <div><label>Telepass (€)</label><input id="tripToll" inputmode="decimal" placeholder="0"></div>
+    </div>
+    <label class="chk"><input type="checkbox" id="tripAR"> Andata e ritorno (km e Telepass × 2)</label>
+    <label>Nome</label>
+    <input id="tripName" placeholder="es. Milano → Brescia">
+    <div id="tripPreview" class="calcres hidden"></div>
+    <div class="row">
+      <button class="full" id="btnAddTrip">Aggiungi viaggio</button>
+    </div>
+    <button class="ghost full" id="btnSaveRoute">☆ Salva anche come percorso rapido</button>
+  </div>
+
+  <div class="card">
+    <h2>Spesa a mano</h2>
+    <div class="seg" id="expType">
+      <button data-v="benzina" class="on">⛽ Benzina</button>
+      <button data-v="telepass">🛣️ Telepass</button>
+    </div>
+    <label>Importo (€)</label>
+    <input id="expAmount" inputmode="decimal" placeholder="0,00">
+    <label>Pagata da</label>
+    <div class="seg" id="expPayer">
+      <button data-v="L" class="on">Luca</button>
+      <button data-v="G">Giada</button>
+    </div>
+    <label>Nota (facoltativa)</label>
+    <input id="expNote" placeholder="es. distributore A4">
+    <button class="full" id="btnAddExp">Aggiungi spesa</button>
+  </div>
+</section>
+
+<!-- ============ MOVIMENTI ============ -->
+<section id="tab-list" class="hidden">
+  <div class="monthbar"><button data-m="-1">‹</button><b class="mlabel"></b><button data-m="1">›</button></div>
+  <div class="card"><div id="list"></div></div>
+</section>
+
+<!-- ============ RIEPILOGO ============ -->
+<section id="tab-sum" class="hidden">
+  <div class="monthbar"><button data-m="-1">‹</button><b class="mlabel"></b><button data-m="1">›</button></div>
+  <div id="summary"></div>
+</section>
+
+<!-- ============ IMPOSTAZIONI ============ -->
+<section id="tab-set" class="hidden">
+  <div class="card">
+    <h2>Costo al km</h2>
+    <div class="row">
+      <div><label>Benzina (€/km)</label><input id="setFuel" inputmode="decimal"></div>
+      <div><label>Usura (€/km)</label><input id="setWear" inputmode="decimal"></div>
+    </div>
+    <p class="note" id="setTotal"></p>
+    <label>Il Telepass dei percorsi lo paga</label>
+    <div class="seg" id="setTollPayer">
+      <button data-v="L">Luca</button>
+      <button data-v="G">Giada</button>
+    </div>
+    <button class="full" id="btnSaveSet">Salva</button>
+    <p class="note">Le nuove tariffe valgono per i viaggi aggiunti da ora in poi: quelli già registrati tengono la tariffa con cui sono stati inseriti.</p>
+  </div>
+
+  <div class="card">
+    <h2>Percorsi rapidi</h2>
+    <div id="routeList"></div>
+    <label>Nome</label><input id="rName" placeholder="es. Casa → Ufficio (A/R)">
+    <div class="row">
+      <div><label>Km</label><input id="rKm" inputmode="decimal"></div>
+      <div><label>Telepass (€)</label><input id="rToll" inputmode="decimal" placeholder="0"></div>
+    </div>
+    <button class="sec full" id="btnAddRoute">Aggiungi percorso</button>
+  </div>
+
+  <div class="card">
+    <h2>Backup</h2>
+    <p class="note" style="margin-top:0">I dati restano solo sul telefono. Ogni tanto esporta un backup (lo puoi mandare a te stesso su WhatsApp o mail).</p>
+    <button class="sec full" id="btnExport">Esporta backup</button>
+    <label>Ripristina: incolla qui il backup</label>
+    <textarea id="importTxt"></textarea>
+    <button class="ghost full" id="btnImport">Ripristina backup</button>
+  </div>
+</section>
+</main>
+
+<div id="toast"><span></span><button>Annulla</button></div>
+
+<nav>
+  <button data-tab="add" class="on"><i>➕</i>Aggiungi</button>
+  <button data-tab="list"><i>📋</i>Movimenti</button>
+  <button data-tab="sum"><i>💶</i>Riepilogo</button>
+  <button data-tab="set"><i>⚙️</i>Impostazioni</button>
+</nav>
+
+<script>
+"use strict";
+/* ---------------- storage ---------------- */
+const KEY = "speseauto_v1";
+const hasBridge = typeof window.Android !== "undefined";
+const DEFAULT = {
+  settings:{fuel:0.10, wear:0.03, tollPayer:"L"},
+  routes:[], trips:[], expenses:[]
+};
+function load(){
+  try{
+    const raw = hasBridge ? Android.load() : localStorage.getItem(KEY);
+    if(raw){ const s = JSON.parse(raw); return Object.assign(JSON.parse(JSON.stringify(DEFAULT)), s, {settings:Object.assign({},DEFAULT.settings,s.settings||{})}); }
+  }catch(e){}
+  return JSON.parse(JSON.stringify(DEFAULT));
+}
+let S = load();
+function save(){
+  const raw = JSON.stringify(S);
+  try{ hasBridge ? Android.save(raw) : localStorage.setItem(KEY, raw); }catch(e){}
+}
+
+/* ---------------- utils ---------------- */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const num = v => { const n = parseFloat(String(v||"").trim().replace(/\s/g,"").replace(",", ".")); return isFinite(n) ? n : 0; };
+const r2 = n => Math.round(n*100)/100;
+const eur = n => (n<0?"−":"") + Math.abs(n).toLocaleString("it-IT",{minimumFractionDigits:2, maximumFractionDigits:2}) + " €";
+const rate = n => n.toLocaleString("it-IT",{minimumFractionDigits:2, maximumFractionDigits:3}) + " €/km";
+const kmf = n => n.toLocaleString("it-IT",{maximumFractionDigits:1}) + " km";
+const today = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const who = p => p==="G" ? "Giada" : "Luca";
+const fmtDate = d => new Date(d+"T12:00:00").toLocaleDateString("it-IT",{weekday:"short", day:"numeric", month:"short"});
+
+function seg(el, val){ $$(el+" button").forEach(b=>b.classList.toggle("on", b.dataset.v===val)); }
+function segVal(el){ const b=$(el+" button.on"); return b? b.dataset.v : null; }
+$$(".seg").forEach(sg => sg.addEventListener("click", e => {
+  const b = e.target.closest("button"); if(!b) return;
+  [...sg.children].forEach(x=>x.classList.toggle("on", x===b));
+}));
+
+let toastTimer, undoFn;
+function toast(msg, undo){
+  const t=$("#toast"); t.querySelector("span").textContent=msg;
+  t.querySelector("button").style.display = undo? "" : "none";
+  undoFn = undo; t.style.display="flex";
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.style.display="none", 4500);
+}
+$("#toast button").onclick = () => { if(undoFn){ undoFn(); undoFn=null; } $("#toast").style.display="none"; };
+
+/* ---------------- http (via Android, fallback fetch) ---------------- */
+const pending = {};
+window.__httpCb = (id, ok, body) => { const p=pending[id]; if(!p) return; delete pending[id]; ok ? p.res(body) : p.rej(new Error(body)); };
+function httpGet(url){
+  if(hasBridge){
+    return new Promise((res,rej)=>{ const id=uid(); pending[id]={res,rej}; Android.httpGet(id, url); });
+  }
+  return fetch(url,{headers:{"Accept-Language":"it"}}).then(r=>{ if(!r.ok) throw new Error("HTTP "+r.status); return r.text(); });
+}
+async function geocode(q){
+  const url = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=it&q=" + encodeURIComponent(q);
+  const j = JSON.parse(await httpGet(url));
+  if(!j.length) throw new Error("Indirizzo non trovato: " + q);
+  return {lat:+j[0].lat, lon:+j[0].lon, name:j[0].display_name};
+}
+async function drivingKm(a, b){
+  const url = `https://router.project-osrm.org/route/v1/driving/${a.lon},${a.lat};${b.lon},${b.lat}?overview=false`;
+  const j = JSON.parse(await httpGet(url));
+  if(j.code!=="Ok" || !j.routes || !j.routes.length) throw new Error("Percorso non trovato");
+  return {km: j.routes[0].distance/1000, min: j.routes[0].duration/60};
+}
+
+/* ---------------- core: entries ---------------- */
+function addTrip({date, name, km, toll, routeId}){
+  const t = {id:uid(), date, name, km:r2(km), fuel:S.settings.fuel, wear:S.settings.wear, routeId:routeId||null};
+  S.trips.push(t);
+  let e=null;
+  if(toll>0){
+    e = {id:uid(), date, type:"telepass", amount:r2(toll), payer:S.settings.tollPayer, note:name, tripId:t.id};
+    S.expenses.push(e);
+  }
+  save();
+  return t;
+}
+function deleteTrip(id){
+  S.trips = S.trips.filter(t=>t.id!==id);
+  S.expenses = S.expenses.filter(e=>e.tripId!==id);
+  save();
+}
+function addExpense(e){ e.id=uid(); e.amount=r2(e.amount); S.expenses.push(e); save(); return e; }
+function deleteExpense(id){ S.expenses = S.expenses.filter(e=>e.id!==id); save(); }
+
+/* ---------------- core: month calc ---------------- */
+function calcMonth(ym){
+  const trips = S.trips.filter(t=>t.date.startsWith(ym));
+  const exps  = S.expenses.filter(e=>e.date.startsWith(ym));
+  const km   = trips.reduce((s,t)=>s+t.km,0);
+  const fuel = trips.reduce((s,t)=>s+t.km*t.fuel,0);
+  const wear = trips.reduce((s,t)=>s+t.km*t.wear,0);
+  const sum = (type,p) => exps.filter(e=>e.type===type && e.payer===p).reduce((s,e)=>s+e.amount,0);
+  const tpL=sum("telepass","L"), tpG=sum("telepass","G"), bzL=sum("benzina","L"), bzG=sum("benzina","G");
+  const car = fuel + wear;               // costo auto (benzina + usura), sostenuto da Luca
+  const total = car + tpL + tpG;          // spese condivise
+  const half = total/2;
+  const paidG = tpG + bzG;                // quanto Giada ha già anticipato
+  const balance = half - paidG;           // >0: Giada deve a Luca; <0: Luca deve a Giada
+  return {trips, exps, km, fuel, wear, car, tpL, tpG, bzL, bzG, total, half, paidG, balance};
+}
+
+/* ---------------- month nav ---------------- */
+let curYM = today().slice(0,7);
+function shiftMonth(d){ const [y,m]=curYM.split("-").map(Number); const dt=new Date(y, m-1+d, 1); curYM = dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0"); renderMonthViews(); }
+const monthLabel = ym => { const [y,m]=ym.split("-").map(Number); return new Date(y,m-1,1).toLocaleDateString("it-IT",{month:"long", year:"numeric"}); };
+$$(".monthbar button").forEach(b=>b.onclick=()=>shiftMonth(+b.dataset.m));
+
+/* ---------------- render: add tab ---------------- */
+function renderRoutes(){
+  const box=$("#routeBtns");
+  if(!S.routes.length){ box.innerHTML='<p class="empty" style="grid-column:1/-1">Nessun percorso salvato. Creane uno qui sotto o in Impostazioni.</p>'; }
+  else box.innerHTML = S.routes.map(r=>`<button class="route" data-id="${r.id}"><b>${esc(r.name)}</b><span>${kmf(r.km)}${r.toll>0?" · Telepass "+eur(r.toll):""} · ${eur(r.km*(S.settings.fuel+S.settings.wear))}</span></button>`).join("");
+  $("#routeList").innerHTML = S.routes.length ? S.routes.map(r=>`<div class="item"><div class="tx"><b>${esc(r.name)}</b><span>${kmf(r.km)}${r.toll>0?" · Telepass "+eur(r.toll):""}</span></div><button class="ghost" data-del-route="${r.id}">🗑️</button></div>`).join("") : '<p class="empty">Nessun percorso.</p>';
+}
+$("#routeBtns").addEventListener("click", e=>{
+  const b=e.target.closest(".route"); if(!b) return;
+  const r=S.routes.find(x=>x.id===b.dataset.id); if(!r) return;
+  const date=$("#addDate").value||today();
+  const t=addTrip({date, name:r.name, km:r.km, toll:r.toll, routeId:r.id});
+  toast(`Aggiunto: ${r.name} (${fmtDate(date)})`, ()=>{ deleteTrip(t.id); renderAll(); });
+  renderAll();
+});
+$("#routeList").addEventListener("click", e=>{
+  const b=e.target.closest("[data-del-route]"); if(!b) return;
+  const r=S.routes.find(x=>x.id===b.dataset.delRoute);
+  if(r && confirm(`Eliminare il percorso "${r.name}"? I viaggi già registrati restano.`)){ S.routes=S.routes.filter(x=>x!==r); save(); renderAll(); }
+});
+
+function tripFormValues(){
+  const ar=$("#tripAR").checked, k=num($("#tripKm").value), tl=num($("#tripToll").value);
+  let name=$("#tripName").value.trim();
+  if(!name){ const f=$("#from").value.trim(), t=$("#to").value.trim(); name = f&&t ? `${f} → ${t}` : "Viaggio"; }
+  if(ar && !/\(A\/R\)$/.test(name)) name += " (A/R)";
+  return {km: ar? k*2 : k, toll: ar? tl*2 : tl, name};
+}
+function updatePreview(){
+  const v=tripFormValues(), p=$("#tripPreview");
+  if(v.km<=0){ p.classList.add("hidden"); return; }
+  const fu=v.km*S.settings.fuel, we=v.km*S.settings.wear, tot=fu+we+v.toll;
+  p.classList.remove("hidden");
+  p.innerHTML = `<b>${kmf(v.km)} → ${eur(tot)}</b><br><span class="note">benzina ${eur(fu)} · usura ${eur(we)}${v.toll>0?" · Telepass "+eur(v.toll):""} — quota Giada ${eur(tot/2)}</span>`;
+}
+["#tripKm","#tripToll","#tripAR","#tripName","#from","#to"].forEach(s=>$(s).addEventListener("input", updatePreview));
+
+$("#btnCalc").onclick = async ()=>{
+  const f=$("#from").value.trim(), t=$("#to").value.trim(), info=$("#calcInfo"), btn=$("#btnCalc");
+  if(!f||!t){ info.textContent="Inserisci partenza e arrivo."; return; }
+  btn.disabled=true; info.textContent="Cerco gli indirizzi…";
+  try{
+    const a=await geocode(f);
+    await new Promise(r=>setTimeout(r,1100)); // regola Nominatim: max 1 richiesta al secondo
+    const b=await geocode(t);
+    info.textContent="Calcolo il percorso…";
+    const d=await drivingKm(a,b);
+    $("#tripKm").value = (Math.round(d.km*10)/10).toString().replace(".", ",");
+    if(!$("#tripName").value.trim()) $("#tripName").value = `${f} → ${t}`;
+    const short = s => s.split(",").slice(0,3).join(",");
+    info.innerHTML = `✅ <b>${kmf(d.km)}</b> in auto, circa ${Math.round(d.min)} min<br>Da: ${esc(short(a.name))}<br>A: ${esc(short(b.name))}<br>Controlla che i luoghi siano giusti: se no scrivi l'indirizzo più preciso (via, città).`;
+    updatePreview();
+  }catch(err){
+    info.textContent = "⚠️ " + (err.message||"Errore") + ". Serve la connessione internet; in alternativa scrivi i km a mano.";
+  }finally{ btn.disabled=false; }
+};
+
+function resetTripForm(){ ["#from","#to","#tripKm","#tripToll","#tripName"].forEach(s=>$(s).value=""); $("#tripAR").checked=false; $("#calcInfo").textContent=""; updatePreview(); }
+$("#btnAddTrip").onclick = ()=>{
+  const v=tripFormValues(); if(v.km<=0){ toast("Inserisci i km (o calcolali)."); return; }
+  const date=$("#addDate").value||today();
+  const t=addTrip({date, name:v.name, km:v.km, toll:v.toll});
+  resetTripForm();
+  toast(`Aggiunto: ${v.name} · ${kmf(v.km)}`, ()=>{ deleteTrip(t.id); renderAll(); });
+  renderAll();
+};
+$("#btnSaveRoute").onclick = ()=>{
+  const v=tripFormValues(); if(v.km<=0){ toast("Prima inserisci o calcola i km."); return; }
+  S.routes.push({id:uid(), name:v.name, km:r2(v.km), toll:r2(v.toll)}); save(); renderAll();
+  toast(`Percorso rapido salvato: ${v.name}`);
+};
+
+$("#btnAddExp").onclick = ()=>{
+  const amount=num($("#expAmount").value); if(amount<=0){ toast("Inserisci l'importo."); return; }
+  const e=addExpense({date:$("#addDate").value||today(), type:segVal("#expType"), amount, payer:segVal("#expPayer"), note:$("#expNote").value.trim()});
+  $("#expAmount").value=""; $("#expNote").value="";
+  toast(`Aggiunta: ${e.type==="benzina"?"Benzina":"Telepass"} ${eur(e.amount)} (${who(e.payer)})`, ()=>{ deleteExpense(e.id); renderAll(); });
+  renderAll();
+};
+
+/* ---------------- render: list ---------------- */
+function renderList(){
+  const {trips, exps} = calcMonth(curYM);
+  const rows = [
+    ...trips.map(t=>({date:t.date, kind:"trip", o:t})),
+    ...exps.filter(e=>!e.tripId).map(e=>({date:e.date, kind:"exp", o:e}))
+  ].sort((a,b)=> b.date.localeCompare(a.date));
+  if(!rows.length){ $("#list").innerHTML='<p class="empty">Nessun movimento in questo mese.</p>'; return; }
+  $("#list").innerHTML = rows.map(({kind,o})=>{
+    if(kind==="trip"){
+      const toll = S.expenses.find(e=>e.tripId===o.id);
+      const cost = o.km*(o.fuel+o.wear) + (toll?toll.amount:0);
+      return `<div class="item"><div class="ic">🚗</div><div class="tx"><b>${esc(o.name)}</b><span>${fmtDate(o.date)} · ${kmf(o.km)}${toll?` · Telepass ${eur(toll.amount)} <span class="tag ${toll.payer}">${who(toll.payer)}</span>`:""}</span></div><div class="am">${eur(cost)}</div><button class="ghost" data-del-trip="${o.id}">🗑️</button></div>`;
+    }
+    return `<div class="item"><div class="ic">${o.type==="benzina"?"⛽":"🛣️"}</div><div class="tx"><b>${o.type==="benzina"?"Benzina":"Telepass"}${o.note?" · "+esc(o.note):""}</b><span>${fmtDate(o.date)} · <span class="tag ${o.payer}">${who(o.payer)}</span></span></div><div class="am">${eur(o.amount)}</div><button class="ghost" data-del-exp="${o.id}">🗑️</button></div>`;
+  }).join("");
+}
+$("#list").addEventListener("click", e=>{
+  const t=e.target.closest("[data-del-trip]"), x=e.target.closest("[data-del-exp]");
+  if(t && confirm("Eliminare questo viaggio?")){ deleteTrip(t.dataset.delTrip); renderAll(); }
+  if(x && confirm("Eliminare questa spesa?")){ deleteExpense(x.dataset.delExp); renderAll(); }
+});
+
+/* ---------------- render: summary ---------------- */
+function summaryText(c){
+  const avgF = c.km? c.fuel/c.km : S.settings.fuel, avgW = c.km? c.wear/c.km : S.settings.wear;
+  let s = `🚗 Spese auto – ${monthLabel(curYM)}\n\n`;
+  s += `Km percorsi: ${kmf(c.km)} (${c.trips.length} viaggi)\n`;
+  s += `• Benzina: ${kmf(c.km)} × ${rate(avgF)} = ${eur(c.fuel)}\n`;
+  s += `• Usura: ${kmf(c.km)} × ${rate(avgW)} = ${eur(c.wear)}\n`;
+  s += `• Telepass: ${eur(c.tpL+c.tpG)}\n`;
+  s += `Totale: ${eur(c.total)} → metà a testa ${eur(c.half)}\n`;
+  if(c.paidG>0) s += `Già pagato da Giada: ${eur(c.paidG)}\n`;
+  s += `\n`;
+  if(Math.abs(c.balance)<0.005) s += `Siete pari ✅`;
+  else if(c.balance>0) s += `👉 Giada deve dare a Luca ${eur(c.balance)}`;
+  else s += `👉 Luca deve dare a Giada ${eur(-c.balance)}`;
+  return s;
+}
+function renderSummary(){
+  const c = calcMonth(curYM);
+  if(!c.trips.length && !c.exps.length){ $("#summary").innerHTML='<div class="card"><p class="empty">Nessun movimento in questo mese.</p></div>'; return; }
+  const avgF = c.km? c.fuel/c.km : S.settings.fuel, avgW = c.km? c.wear/c.km : S.settings.wear;
+  const b = c.balance, zero = Math.abs(b)<0.005;
+  const hero = zero ? `<div class="result zero"><p>Saldo del mese</p><div class="big">Siete pari ✅</div></div>`
+    : b>0 ? `<div class="result"><p>Giada deve dare a Luca</p><div class="big">${eur(b)}</div></div>`
+          : `<div class="result rev"><p>Luca deve dare a Giada</p><div class="big">${eur(-b)}</div></div>`;
+  const tp = c.tpL+c.tpG;
+  let html = hero;
+  html += `<div class="card"><h2>Spese del mese</h2><table>
+    <tr><td>Km percorsi (${c.trips.length} viaggi)</td><td class="n">${kmf(c.km)}</td></tr>
+    <tr><td>Benzina <span class="note">(${rate(avgF)})</span></td><td class="n">${eur(c.fuel)}</td></tr>
+    <tr><td>Usura <span class="note">(${rate(avgW)})</span></td><td class="n">${eur(c.wear)}</td></tr>
+    <tr><td>Telepass</td><td class="n">${eur(tp)}</td></tr>
+    ${tp>0?`<tr class="sub"><td>pagato da Luca / Giada</td><td class="n">${eur(c.tpL)} / ${eur(c.tpG)}</td></tr>`:""}
+    <tr class="tot"><td>Totale</td><td class="n">${eur(c.total)}</td></tr>
+  </table></div>`;
+  html += `<div class="card"><h2>Quota di Giada (metà)</h2><table>
+    <tr><td>Benzina</td><td class="n">${eur(c.fuel/2)}</td></tr>
+    <tr class="sub"><td>${kmf(c.km)} × ${rate(avgF/2)}</td><td></td></tr>
+    <tr><td>Usura</td><td class="n">${eur(c.wear/2)}</td></tr>
+    <tr class="sub"><td>${kmf(c.km)} × ${rate(avgW/2)}</td><td></td></tr>
+    <tr><td>Telepass</td><td class="n">${eur(tp/2)}</td></tr>
+    <tr class="tot"><td>Quota Giada</td><td class="n">${eur(c.half)}</td></tr>
+    ${c.tpG>0?`<tr><td>− Telepass già pagato da Giada</td><td class="n">${eur(-c.tpG)}</td></tr>`:""}
+    ${c.bzG>0?`<tr><td>− Benzina già pagata da Giada</td><td class="n">${eur(-c.bzG)}</td></tr>`:""}
+    <tr class="tot"><td>${b>=0?"Da dare a Luca":"Luca restituisce"}</td><td class="n">${eur(Math.abs(b))}</td></tr>
+  </table>
+  ${c.bzL>0?`<p class="note">Rifornimenti pagati da Luca nel mese: ${eur(c.bzL)}. Sono già coperti dal costo benzina al km, quindi non cambiano il saldo.</p>`:""}
+  <p class="note">La benzina è calcolata a km. Se fa il pieno Giada, l'importo le viene scalato dalla quota.</p>
+  </div>`;
+  html += `<button class="full" id="btnShare">Condividi riepilogo con Giada</button>`;
+  $("#summary").innerHTML = html;
+  $("#btnShare").onclick = ()=>{
+    const txt = summaryText(c);
+    if(hasBridge) Android.share(txt);
+    else if(navigator.share) navigator.share({text:txt}).catch(()=>{});
+    else navigator.clipboard.writeText(txt).then(()=>toast("Riepilogo copiato"));
+  };
+}
+
+/* ---------------- settings ---------------- */
+function renderSettings(){
+  $("#setFuel").value = String(S.settings.fuel).replace(".", ",");
+  $("#setWear").value = String(S.settings.wear).replace(".", ",");
+  seg("#setTollPayer", S.settings.tollPayer);
+  updSetTotal();
+}
+function updSetTotal(){ $("#setTotal").textContent = "Totale: " + rate(num($("#setFuel").value)+num($("#setWear").value)); }
+$("#setFuel").oninput = $("#setWear").oninput = updSetTotal;
+$("#btnSaveSet").onclick = ()=>{
+  S.settings.fuel = num($("#setFuel").value); S.settings.wear = num($("#setWear").value);
+  S.settings.tollPayer = segVal("#setTollPayer") || "L";
+  save(); renderAll(); toast("Impostazioni salvate");
+};
+$("#btnAddRoute").onclick = ()=>{
+  const name=$("#rName").value.trim(), km=num($("#rKm").value), toll=num($("#rToll").value);
+  if(!name||km<=0){ toast("Inserisci nome e km."); return; }
+  S.routes.push({id:uid(), name, km:r2(km), toll:r2(toll)}); save();
+  $("#rName").value=$("#rKm").value=$("#rToll").value=""; renderAll(); toast("Percorso aggiunto");
+};
+$("#btnExport").onclick = ()=>{
+  const txt = JSON.stringify(S);
+  if(hasBridge) Android.share(txt);
+  else navigator.clipboard.writeText(txt).then(()=>toast("Backup copiato"));
+};
+$("#btnImport").onclick = ()=>{
+  try{
+    const d = JSON.parse($("#importTxt").value);
+    if(!Array.isArray(d.trips)||!Array.isArray(d.expenses)) throw 0;
+    if(!confirm("Sostituire tutti i dati attuali con il backup?")) return;
+    S = Object.assign(JSON.parse(JSON.stringify(DEFAULT)), d, {settings:Object.assign({},DEFAULT.settings,d.settings||{})});
+    save(); $("#importTxt").value=""; renderAll(); toast("Backup ripristinato");
+  }catch(e){ toast("Testo del backup non valido"); }
+};
+
+/* ---------------- tabs ---------------- */
+$$("nav button").forEach(b=>b.onclick=()=>{
+  $$("nav button").forEach(x=>x.classList.toggle("on", x===b));
+  ["add","list","sum","set"].forEach(t=>$("#tab-"+t).classList.toggle("hidden", t!==b.dataset.tab));
+  window.scrollTo(0,0);
+});
+
+function renderMonthViews(){ $$(".mlabel").forEach(e=>e.textContent=monthLabel(curYM)); renderList(); renderSummary(); }
+function renderAll(){ renderRoutes(); renderMonthViews(); }
+
+$("#addDate").value = today();
+renderSettings();
+renderAll();
+</script>
+</body>
+</html>
