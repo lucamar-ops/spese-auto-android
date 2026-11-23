@@ -20,6 +20,7 @@ import org.json.JSONObject;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
@@ -68,6 +69,21 @@ public class MainActivity extends Activity {
             else f &= ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
         }
         d.setSystemUiVisibility(f);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (web != null) {
+            web.resumeTimers();
+            web.evaluateJavascript("window.onAppResume && onAppResume()", null);
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        if (web != null) web.pauseTimers();
+        super.onPause();
     }
 
     @Override
@@ -121,40 +137,45 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void httpGet(final String id, final String url) {
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    boolean ok = false;
-                    String body;
-                    try {
-                        HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
-                        c.setRequestProperty("User-Agent", "SpeseAutoLucaGiada/1.0 (app personale Android)");
-                        c.setRequestProperty("Accept-Language", "it");
-                        c.setConnectTimeout(15000);
-                        c.setReadTimeout(20000);
-                        int code = c.getResponseCode();
-                        InputStream in = code < 400 ? c.getInputStream() : c.getErrorStream();
-                        StringBuilder sb = new StringBuilder();
-                        if (in != null) {
-                            BufferedReader r = new BufferedReader(new InputStreamReader(in, "UTF-8"));
-                            String line;
-                            while ((line = r.readLine()) != null) sb.append(line).append('\n');
-                            r.close();
-                        }
-                        ok = code < 400;
-                        body = ok ? sb.toString() : ("Errore del servizio (HTTP " + code + ")");
-                        c.disconnect();
-                    } catch (Exception e) {
-                        body = "Connessione non riuscita";
+            httpRequest(id, "GET", url, null);
+        }
+
+        @JavascriptInterface
+        public void httpRequest(final String id, final String method, final String url, final String reqBody) {
+            new Thread(() -> {
+                boolean ok = false;
+                String body;
+                try {
+                    HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+                    c.setRequestMethod(method);
+                    c.setRequestProperty("User-Agent", "SpeseAutoLucaGiada/1.0 (app personale Android)");
+                    c.setRequestProperty("Accept-Language", "it");
+                    c.setConnectTimeout(15000);
+                    c.setReadTimeout(20000);
+                    if (reqBody != null) {
+                        c.setDoOutput(true);
+                        c.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+                        OutputStream os = c.getOutputStream();
+                        os.write(reqBody.getBytes("UTF-8"));
+                        os.close();
                     }
-                    final String js = "window.__httpCb(" + JSONObject.quote(id) + "," + ok + "," + JSONObject.quote(body) + ")";
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            web.evaluateJavascript(js, null);
-                        }
-                    });
+                    int code = c.getResponseCode();
+                    InputStream in = code < 400 ? c.getInputStream() : c.getErrorStream();
+                    StringBuilder sb = new StringBuilder();
+                    if (in != null) {
+                        BufferedReader r = new BufferedReader(new InputStreamReader(in, "UTF-8"));
+                        String line;
+                        while ((line = r.readLine()) != null) sb.append(line).append('\n');
+                        r.close();
+                    }
+                    ok = code < 400;
+                    body = ok ? sb.toString() : ("HTTP " + code + " " + sb.toString());
+                    c.disconnect();
+                } catch (Exception e) {
+                    body = "Connessione non riuscita";
                 }
+                final String js = "window.__httpCb(" + JSONObject.quote(id) + "," + ok + "," + JSONObject.quote(body) + ")";
+                runOnUiThread(() -> web.evaluateJavascript(js, null));
             }).start();
         }
     }

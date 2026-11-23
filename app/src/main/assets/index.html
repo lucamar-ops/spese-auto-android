@@ -211,6 +211,13 @@ nav button.on{color:var(--acc-ink);background:var(--acc-soft)}
 .dialog p{margin:0 0 18px;color:var(--muted);font-size:15px}
 #dlgBack{z-index:60}
 
+/* sync */
+.sync-st{display:flex;align-items:center;gap:8px;font-size:14px;margin:-2px 2px 14px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--ok);flex:none}
+.dot.busy{background:#F59E0B;animation:pulse 1s infinite}.dot.err{background:var(--danger)}.dot.off{background:var(--muted)}
+@keyframes pulse{50%{opacity:.35}}
+.codebox{font-family:ui-monospace,Menlo,monospace;font-size:17px;letter-spacing:.04em;background:var(--surface2);border-radius:14px;padding:13px 14px;margin-bottom:12px;word-break:break-all}
+.topsync{display:inline-flex;align-items:center;gap:6px}
 /* toast */
 #toast{position:fixed;left:16px;right:16px;bottom:calc(96px + env(safe-area-inset-bottom));background:#111827;color:#fff;border-radius:16px;padding:13px 16px;display:flex;align-items:center;gap:10px;z-index:70;transform:translateY(20px);opacity:0;pointer-events:none;transition:all .25s;font-size:14.5px}
 [data-theme=dark] #toast{background:#2A2F42}
@@ -280,9 +287,14 @@ nav button.on{color:var(--acc-ink);background:var(--acc-soft)}
     <div id="routeList"></div>
   </div>
 
+  <div class="card" id="syncCard">
+    <div class="card-h"><h2>Condivisione con Giada</h2><span id="syncBadge"></span></div>
+    <div id="syncBody"></div>
+  </div>
+
   <div class="card">
     <div class="card-h"><h2>Backup</h2></div>
-    <p class="note" style="margin:-4px 2px 14px">I dati sono salvati solo su questo telefono. Esporta un backup ogni tanto, per esempio mandandolo a te stesso su WhatsApp o per mail.</p>
+    <p class="note" style="margin:-4px 2px 14px">Esporta un backup ogni tanto, per esempio mandandolo a te stesso su WhatsApp o per mail.</p>
     <div class="btn-row"><button class="btn soft" id="btnExport"><svg class="i" data-i="share"></svg>Esporta</button><button class="btn plain" id="btnImport"><svg class="i" data-i="download"></svg>Ripristina</button></div>
   </div>
 
@@ -344,7 +356,9 @@ const clone = o => JSON.parse(JSON.stringify(o));
 function normalize(d){ return Object.assign(clone(DEFAULT), d, {settings:Object.assign({},DEFAULT.settings,(d&&d.settings)||{})}); }
 function load(){ try{ const raw = hasBridge? Android.load() : localStorage.getItem(KEY); if(raw) return normalize(JSON.parse(raw)); }catch(e){} return clone(DEFAULT); }
 let S = load();
-function save(){ const raw=JSON.stringify(S); try{ hasBridge? Android.save(raw) : localStorage.setItem(KEY,raw); }catch(e){} }
+function saveLocal(){ const raw=JSON.stringify(S); try{ hasBridge? Android.save(raw) : localStorage.setItem(KEY,raw); }catch(e){} }
+function save(){ saveLocal(); if(window.scheduleSync) scheduleSync(); }
+const dataOnly=()=>{ const o=Object.assign({},S); delete o.sync; return o; };
 
 /* ================= utils ================= */
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
@@ -430,6 +444,10 @@ function photonLabel(p){
   if(p.country && p.country!=="Italia") parts.push(p.country);
   return {main, sub:parts.join(", ")};
 }
+function httpReq(method,url,body){
+  if(hasBridge) return new Promise((res,rej)=>{ const id=uid(); pending[id]={res,rej}; Android.httpRequest(id,method,url,body==null?null:body); });
+  return fetch(url,{method,body,headers:body?{"Content-Type":"application/json"}:{}}).then(async r=>{ const t=await r.text(); if(!r.ok) throw new Error("HTTP "+r.status+" "+t); return t; });
+}
 async function searchPlaces(q, limit=5){
   const url=`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=${limit}&lat=45.55&lon=9.6`;
   const j=JSON.parse(await httpGet(url));
@@ -466,8 +484,8 @@ function updateTrip(id,{date,name,km,toll,tollPayer}){
 function deleteTrip(id){ S.trips=S.trips.filter(t=>t.id!==id); S.expenses=S.expenses.filter(e=>e.tripId!==id); save(); }
 function addExpense(e){ e.id=uid(); e.amount=r2(e.amount); S.expenses.push(e); save(); return e; }
 function deleteExpense(id){ S.expenses=S.expenses.filter(e=>e.id!==id); save(); }
-function snapshot(){ return JSON.stringify(S); }
-function restore(snap){ S=normalize(JSON.parse(snap)); save(); renderAll(); }
+function snapshot(){ return JSON.stringify(dataOnly()); }
+function restore(snap){ const sy=S.sync; S=normalize(JSON.parse(snap)); if(sy) S.sync=sy; save(); renderAll(); }
 
 /* ================= calc ================= */
 function calcPeriod(prefix){
@@ -802,28 +820,139 @@ function openRouteSheet(route){
     if(d) d.onclick=async()=>{ if(await ask("Eliminare il percorso?",`“${esc(route.name)}” sparirà dai percorsi rapidi. I viaggi già registrati restano.`,"Elimina",true)){ S.routes=S.routes.filter(x=>x!==route); save(); closeSheet(); renderAll(); } };
   });
 }
-$("#btnExport").onclick=()=>{ const txt=JSON.stringify(S); if(hasBridge) Android.share(txt); else navigator.clipboard.writeText(txt).then(()=>toast("Backup copiato")); };
+$("#btnExport").onclick=()=>{ const txt=JSON.stringify(dataOnly()); if(hasBridge) Android.share(txt); else navigator.clipboard.writeText(txt).then(()=>toast("Backup copiato")); };
 $("#btnImport").onclick=()=>openSheet("Ripristina backup",`
     <div class="field"><label>Incolla qui il testo del backup</label><textarea id="impTxt"></textarea></div>
     <button class="btn block" id="impGo">${ic("download")}Ripristina</button>`, sh=>{
   sh.querySelector("#impGo").onclick=async()=>{
     let d; try{ d=JSON.parse(sh.querySelector("#impTxt").value); if(!Array.isArray(d.trips)||!Array.isArray(d.expenses)) throw 0; }catch(e){ toast("Testo del backup non valido"); return; }
     if(!(await ask("Ripristinare il backup?","Tutti i dati attuali verranno sostituiti da quelli del backup.","Ripristina",true))) return;
-    S=normalize(d); save(); closeSheet(); applyTheme(); renderAll(); toast("Backup ripristinato");
+    const sy=S.sync; delete d.sync; S=normalize(d); if(sy) S.sync=sy; save(); closeSheet(); applyTheme(); renderAll(); toast("Backup ripristinato");
   };
 });
 $("#btnResetAll").onclick=async()=>{
   const n=S.trips.length+S.expenses.filter(e=>!e.tripId).length;
-  if(!(await ask("Cancellare tutti i dati?",`Verranno eliminati <b>${n} movimenti</b>, ${S.routes.length} percorsi rapidi e le impostazioni. <b>L'operazione non si può annullare.</b> Se vuoi, prima esporta un backup.`,"Cancella tutto",true))) return;
-  S=clone(DEFAULT); save(); applyTheme(); renderAll(); showTab("home"); toast("Tutti i dati sono stati cancellati");
+  if(!(await ask("Cancellare tutti i dati?",`Verranno eliminati <b>${n} movimenti</b>, ${S.routes.length} percorsi rapidi e le impostazioni. <b>L'operazione non si può annullare.</b>${S.sync&&S.sync.code?" I dati vengono cancellati <b>anche sul telefono di Giada</b>.":""} Se vuoi, prima esporta un backup.`,"Cancella tutto",true))) return;
+  const sy=S.sync; S=clone(DEFAULT); if(sy) S.sync=sy; save(); applyTheme(); renderAll(); showTab("home"); toast("Tutti i dati sono stati cancellati");
 };
 
+/* ================= SYNC (Firebase Firestore REST) ================= */
+const FS_PROJECT="spese-auto-39d1c";
+const FS_ROOT=`projects/${FS_PROJECT}/databases/(default)/documents`;
+const FS_URL="https://firestore.googleapis.com/v1/"+FS_ROOT;
+let syncing=false, syncAgain=false, syncTimer=null, pollTimer=null;
+const SY=()=>{ if(!S.sync) S.sync={code:"",base:{},lastOk:0,err:""}; if(!S.sync.base) S.sync.base={}; return S.sync; };
+const cleanCode=c=>String(c||"").trim().replace(/[^A-Za-z0-9_-]/g,"");
+function toDocs(){
+  const d={};
+  d.settings=JSON.stringify({fuel:S.settings.fuel,wear:S.settings.wear,tollPayer:S.settings.tollPayer});
+  d.routes=JSON.stringify(S.routes);
+  S.trips.forEach(t=>d["t_"+t.id]=JSON.stringify(t));
+  S.expenses.forEach(e=>d["e_"+e.id]=JSON.stringify(e));
+  return d;
+}
+function fromDocs(d){
+  const theme=S.settings.theme;
+  try{ if(d.settings) S.settings=Object.assign({},DEFAULT.settings,JSON.parse(d.settings),{theme}); }catch(e){}
+  try{ S.routes=d.routes?JSON.parse(d.routes):[]; }catch(e){ S.routes=[]; }
+  S.trips=[]; S.expenses=[];
+  Object.keys(d).forEach(k=>{ try{ if(k.startsWith("t_")) S.trips.push(JSON.parse(d[k])); else if(k.startsWith("e_")) S.expenses.push(JSON.parse(d[k])); }catch(e){} });
+}
+async function listRemote(code){
+  const out={}; let token="";
+  do{
+    const j=JSON.parse(await httpReq("GET",`${FS_URL}/coppie/${code}/dati?pageSize=300${token?"&pageToken="+encodeURIComponent(token):""}`));
+    (j.documents||[]).forEach(doc=>{ const id=doc.name.split("/").pop(), f=doc.fields||{};
+      out[id]={j:(f.j&&f.j.stringValue)||"", del:!!(f.del&&f.del.booleanValue), ut:doc.updateTime}; });
+    token=j.nextPageToken||"";
+  }while(token);
+  return out;
+}
+async function commit(code, writes){
+  for(let i=0;i<writes.length;i+=400){
+    const chunk=writes.slice(i,i+400);
+    const body={writes:chunk.map(w=>({update:{name:`${FS_ROOT}/coppie/${code}/dati/${w.id}`,fields:{j:{stringValue:w.j},del:{booleanValue:w.del},ts:{integerValue:String(Date.now())}}}}))};
+    const r=JSON.parse(await httpReq("POST",`${FS_URL}:commit`,JSON.stringify(body)));
+    (r.writeResults||[]).forEach((wr,k)=>{ const w=chunk[k]; SY().base[w.id]={j:w.j,del:w.del,ut:wr.updateTime||r.commitTime}; });
+    saveLocal();
+  }
+}
+async function syncNow(){
+  const sy=SY(); if(!sy.code) return;
+  if(syncing){ syncAgain=true; return; }
+  syncing=true; renderSync();
+  try{
+    const code=sy.code, remote=await listRemote(code);
+    if(SY().code!==code) throw new Error("annullato");
+    const base=sy.base, first=Object.keys(base).length===0, local=toDocs();
+    let changed=false;
+    for(const id in remote){
+      const r=remote[id], b=base[id];
+      if(b && b.ut===r.ut) continue;
+      const dirty=!first && (b ? (b.del ? (id in local) : local[id]!==b.j) : (id in local));
+      if(dirty) continue;                       // modifica locale più recente: vince la locale
+      base[id]=r;
+      if(r.del){ if(id in local){ delete local[id]; changed=true; } }
+      else if(local[id]!==r.j){ local[id]=r.j; changed=true; }
+    }
+    const writes=[];
+    for(const id in local){ const b=base[id]; if(!b||b.del||b.j!==local[id]) writes.push({id,j:local[id],del:false}); }
+    for(const id in base){ if(!base[id].del && !(id in local)) writes.push({id,j:"",del:true}); }
+    if(changed){ fromDocs(local); renderAll(); }
+    saveLocal();
+    if(writes.length) await commit(code,writes);
+    sy.lastOk=Date.now(); sy.err="";
+  }catch(e){
+    const m=String(e&&e.message||e);
+    sy.err = /HTTP 403|PERMISSION/.test(m) ? "Accesso negato: controlla le regole di Firestore" : /HTTP 404|NOT_FOUND/.test(m) ? "Database non trovato" : /annullato/.test(m) ? "" : "Offline: riprovo più tardi";
+  }
+  saveLocal(); syncing=false; renderSync();
+  if(syncAgain){ syncAgain=false; setTimeout(syncNow,300); }
+}
+window.scheduleSync=()=>{ if(!SY().code) return; clearTimeout(syncTimer); syncTimer=setTimeout(syncNow,1200); };
+window.onAppResume=()=>{ if(SY().code) syncNow(); };
+function startPolling(){ clearInterval(pollTimer); if(SY().code) pollTimer=setInterval(()=>{ if(!document.hidden) syncNow(); },20000); }
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) window.onAppResume(); });
+
+function genCode(){ const a="abcdefghjkmnpqrstuvwxyz23456789"; let s=""; const r=new Uint32Array(14); crypto.getRandomValues(r); r.forEach((v,i)=>{ s+=a[v%a.length]; if(i===4||i===9) s+="-"; }); return s; }
+function renderSync(){
+  const sy=SY(), body=$("#syncBody"), badge=$("#syncBadge");
+  if(!body) return;
+  if(!sy.code){
+    badge.innerHTML=`<span class="tag" style="background:var(--surface2);color:var(--muted)">Non attiva</span>`;
+    if(!body.querySelector("#syCode")){
+      body.innerHTML=`<p class="note" style="margin:-4px 2px 14px">Inserite <b>lo stesso codice</b> sui due telefoni: vedrete e modificherete gli stessi dati, aggiornati in automatico. Il codice è la vostra chiave: non condividetelo con altri.</p>
+      <div class="field"><label>Codice di coppia (almeno 10 caratteri)</label><input id="syCode" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="es. k7pm2-xq9fa-r4h"></div>
+      <div class="btn-row"><button class="btn plain" id="syGen">Genera</button><button class="btn" id="syJoin" style="flex:2">Collega</button></div>`;
+      body.querySelector("#syGen").onclick=()=>{ body.querySelector("#syCode").value=genCode(); };
+      body.querySelector("#syJoin").onclick=async()=>{
+        const c=cleanCode(body.querySelector("#syCode").value);
+        if(c.length<10){ toast("Il codice deve avere almeno 10 caratteri (lettere, numeri, - o _)."); return; }
+        const n=S.trips.length+S.expenses.length;
+        if(n && !(await ask("Collegare questo telefono?",`I ${n} movimenti già presenti su questo telefono verranno <b>uniti</b> a quelli condivisi con questo codice.`,"Collega"))) return;
+        S.sync={code:c,base:{},lastOk:0,err:""}; saveLocal(); body.innerHTML=""; renderSync(); startPolling(); syncNow();
+      };
+    }
+    return;
+  }
+  const st = syncing? ["busy","Sincronizzazione in corso…"] : sy.err? ["err",sy.err] : sy.lastOk? ["","Sincronizzato alle "+new Date(sy.lastOk).toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"})] : ["busy","In attesa…"];
+  badge.innerHTML=`<span class="tag ${sy.err?"G":"L"}">${sy.err?"Errore":"Attiva"}</span>`;
+  body.innerHTML=`<div class="sync-st"><span class="dot ${st[0]}"></span><span>${esc(st[1])}</span></div>
+    <label style="display:block;font-size:13px;font-weight:600;color:var(--muted);margin:0 2px 6px">Codice di coppia</label>
+    <div class="codebox">${esc(sy.code)}</div>
+    <div class="btn-row"><button class="btn soft" id="syShare">${ic("share")}Invia codice</button><button class="btn plain" id="syNow">${ic("reset")}Aggiorna</button></div>
+    <button class="link" id="syLeave" style="margin-top:10px;color:var(--danger)">Scollega questo telefono</button>`;
+  body.querySelector("#syShare").onclick=()=>{ const t=`Codice per l'app Spese Auto: ${sy.code}\n(Impostazioni → Condivisione con Giada → incolla il codice → Collega)`; if(hasBridge) Android.share(t); else navigator.clipboard.writeText(t).then(()=>toast("Codice copiato")); };
+  body.querySelector("#syNow").onclick=()=>syncNow();
+  body.querySelector("#syLeave").onclick=async()=>{ if(await ask("Scollegare questo telefono?","I dati restano su questo telefono ma smettono di aggiornarsi con Giada. Puoi ricollegarti quando vuoi con lo stesso codice.","Scollega",true)){ S.sync={code:"",base:{},lastOk:0,err:""}; saveLocal(); clearInterval(pollTimer); renderSync(); } };
+}
+
 /* ================= boot ================= */
-function renderAll(){ renderHome(); renderMonth(); renderSettings(); if(!$("#sumYear").classList.contains("hidden")) renderYear(); }
+function renderAll(){ renderHome(); renderMonth(); renderSettings(); renderSync(); if(!$("#sumYear").classList.contains("hidden")) renderYear(); }
 hydrateIcons(); bindSeg(document);
 applyTheme();
 try{ matchMedia("(prefers-color-scheme: dark)").addEventListener("change",applyTheme); }catch(e){}
-updDateLbl(); renderAll(); showTab("home");
+updDateLbl(); renderAll(); showTab("home"); startPolling(); if(SY().code) syncNow();
 </script>
 </body>
 </html>
