@@ -88,6 +88,7 @@ button{font:inherit;border:0;cursor:pointer;color:inherit;background:none}
 .route .cost{font-size:15px;font-weight:700;margin-top:6px}
 .route .ico{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;background:var(--acc-soft);color:var(--acc-ink)}
 .route .ico svg{width:16px;height:16px}
+.route.spesa .ico{background:var(--giada-soft);color:var(--giada)}
 .empty{color:var(--muted);font-size:14px;text-align:center;padding:18px 8px}
 
 /* list */
@@ -241,7 +242,7 @@ nav button.on{color:var(--acc-ink);background:var(--acc-soft)}
     <button class="action" id="actTrip"><div class="bubble"><svg class="i" data-i="car"></svg></div><b>Nuovo viaggio</b><span>Calcola i km in auto</span></button>
     <button class="action orange" id="actExp"><div class="bubble"><svg class="i" data-i="fuel"></svg></div><b>Nuova spesa</b><span>Benzina o Telepass</span></button>
   </div>
-  <div class="sec-t" style="display:flex;justify-content:space-between;align-items:center">Percorsi rapidi <button class="link" id="manageRoutes" style="text-transform:none;letter-spacing:0">Modifica</button></div>
+  <div class="sec-t" style="display:flex;justify-content:space-between;align-items:center">Percorsi e spese rapide <button class="link" id="manageRoutes" style="text-transform:none;letter-spacing:0">Modifica</button></div>
   <div id="routeBtns" class="routes"></div>
 </section>
 
@@ -283,7 +284,7 @@ nav button.on{color:var(--acc-ink);background:var(--acc-soft)}
   </div>
 
   <div class="card" id="routesCard">
-    <div class="card-h"><h2>Percorsi rapidi</h2><button class="link" id="btnNewRoute">+ Nuovo</button></div>
+    <div class="card-h"><h2>Percorsi e spese rapide</h2><button class="link" id="btnNewRoute">+ Nuovo</button></div>
     <div id="routeList"></div>
   </div>
 
@@ -343,6 +344,7 @@ const ICONS = {
   star:"M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.2-6.2 3.2L7 14.1 2 9.3l6.9-1L12 2z",
   swap:"M7 20V4M3 8l4-4 4 4M17 4v16M13 16l4 4 4-4",
   check:"M20 6 9 17l-5-5",
+  parking:"M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM9 17V7h4a3 3 0 0 1 0 6H9",
   route:"M6 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM6 15V9a4 4 0 0 1 4-4h2M18 9v6a4 4 0 0 1-4 4h-2"
 };
 const ic = (n, cls="") => `<svg class="i ${cls}" viewBox="0 0 24 24"><path d="${ICONS[n]}"/></svg>`;
@@ -529,7 +531,12 @@ function renderHome(){
   const ym=today().slice(0,7), c=calcPeriod(ym);
   const m=monthName(ym); $("#homeHero").innerHTML=heroHTML(c, m.charAt(0).toUpperCase()+m.slice(1));
   const rate=S.settings.fuel+S.settings.wear;
-  $("#routeBtns").innerHTML = S.routes.length ? S.routes.map(r=>`<button class="route" data-id="${r.id}">
+  $("#routeBtns").innerHTML = S.routes.length ? S.routes.map(r=> r.kind==="spesa"
+    ? `<button class="route spesa" data-id="${r.id}">
+      <div class="ico">${ic(r.type==="benzina"?"fuel":"parking")}</div><b>${esc(r.name)}</b>
+      <div class="meta">${r.type==="benzina"?"Benzina":"Telepass"} · ${who(r.payer)}</div>
+      <div class="cost num">${eur(r.amount)}</div></button>`
+    : `<button class="route" data-id="${r.id}">
       <div class="ico">${ic("route")}</div><b>${esc(r.name)}</b>
       <div class="meta num">${kmf(r.km)}${r.toll>0?" · Telepass "+eur(r.toll):""}</div>
       <div class="cost num">${eur(r.km*rate+(r.toll||0))}</div></button>`).join("")
@@ -539,7 +546,8 @@ $("#routeBtns").addEventListener("click",e=>{
   const b=e.target.closest(".route"); if(!b) return;
   const r=S.routes.find(x=>x.id===b.dataset.id); if(!r) return;
   const date=addDate.value||today(), snap=snapshot();
-  addTrip({date,name:r.name,km:r.km,toll:r.toll,routeId:r.id});
+  if(r.kind==="spesa") addExpense({date,type:r.type,amount:r.amount,payer:r.payer,note:r.name});
+  else addTrip({date,name:r.name,km:r.km,toll:r.toll,routeId:r.id});
   if(navigator.vibrate) navigator.vibrate(15);
   toast(`Aggiunto: ${r.name} · ${fmtShort(date)}`,()=>restore(snap));
   renderAll();
@@ -651,7 +659,7 @@ function openExpSheet(exp){
     <div class="row"><div class="field"><label>Data</label><input type="date" id="eDate"></div></div>
     <div class="field"><label>Nota (facoltativa)</label><input id="eNote" placeholder="es. distributore A4"></div>
     <div class="btn-row">${exp?`<button class="btn danger-soft" id="eDel" style="flex:0 0 auto">${ic("trash")}</button>`:""}<button class="btn" id="eSave">${ic("check")}${exp?"Salva modifiche":"Aggiungi spesa"}</button></div>
-    ${exp&&exp.tripId?"":""}
+    ${exp?"":`<button class="btn plain block" id="eQuick" style="margin-top:10px">${ic("star")}Salva come spesa rapida</button>`}
   `, sh=>{
     segSet(sh.querySelector("#eType"),e.type); segSet(sh.querySelector("#ePayer"),e.payer);
     sh.querySelector("#eAmt").value=e.amount===""?"":dec(e.amount); sh.querySelector("#eDate").value=e.date; sh.querySelector("#eNote").value=e.note||"";
@@ -664,6 +672,8 @@ function openExpSheet(exp){
       else { addExpense(v); toast(`Aggiunta: ${v.type==="benzina"?"Benzina":"Telepass"} ${eur(v.amount)} (${who(v.payer)})`,()=>restore(snap)); }
       closeSheet(); renderAll();
     };
+    const qb=sh.querySelector("#eQuick");
+    if(qb) qb.onclick=()=>{ const t=segGet(sh.querySelector("#eType")); closeSheet(); setTimeout(()=>openRouteSheet(null,{kind:"spesa",type:t,payer:segGet(sh.querySelector("#ePayer")),amount:num(sh.querySelector("#eAmt").value),name:sh.querySelector("#eNote").value.trim()}),320); };
     const del=sh.querySelector("#eDel");
     if(del) del.onclick=async()=>{ if(await ask("Eliminare la spesa?","L'operazione si può annullare subito dopo.","Elimina",true)){ const snap=snapshot(); deleteExpense(exp.id); closeSheet(); renderAll(); toast("Spesa eliminata",()=>restore(snap)); } };
   });
@@ -786,7 +796,7 @@ function renderSettings(){
   segSet($("#setTollPayer"),S.settings.tollPayer); segSet($("#setTheme"),S.settings.theme);
   $("#setTotal").textContent=rate(S.settings.fuel+S.settings.wear);
   $("#routeList").innerHTML = S.routes.length ? S.routes.map((r,i)=>`<div class="rrow">
-      <div class="tx"><b>${esc(r.name)}</b><span class="num">${kmf(r.km)}${r.toll>0?" · Telepass "+eur(r.toll):""}</span></div>
+      <div class="tx"><b>${esc(r.name)}</b><span class="num">${r.kind==="spesa"?(r.type==="benzina"?"Benzina":"Telepass")+" "+eur(r.amount)+" · "+who(r.payer):kmf(r.km)+(r.toll>0?" · Telepass "+eur(r.toll):"")}</span></div>
       <button class="icon-btn" data-mv="${i}:-1" ${i===0?"disabled":""}>${ic("up")}</button>
       <button class="icon-btn" data-mv="${i}:1" ${i===S.routes.length-1?"disabled":""}>${ic("down")}</button>
       <button class="icon-btn" data-ed="${r.id}">${ic("edit")}</button></div>`).join("")
@@ -801,23 +811,50 @@ $("#routeList").addEventListener("click",e=>{
   if(ed) openRouteSheet(S.routes.find(r=>r.id===ed.dataset.ed));
 });
 $("#btnNewRoute").onclick=()=>openRouteSheet();
-function openRouteSheet(route){
-  openSheet(route?"Modifica percorso":"Nuovo percorso",`
-    <div class="field"><label>Nome</label><input id="rName" placeholder="es. Casa → Ufficio (A/R)"></div>
-    <div class="row"><div class="field"><label>Km totali</label><div class="suffix"><input id="rKm" inputmode="decimal"><i>km</i></div></div>
-    <div class="field"><label>Telepass</label><div class="suffix"><input id="rToll" inputmode="decimal" placeholder="0"><i>€</i></div></div></div>
-    <p class="note" style="margin:-4px 2px 14px">Se è un andata e ritorno, inserisci i km e il Telepass totali. Per calcolare i km usa <b>Nuovo viaggio</b> → Salva come percorso rapido.</p>
+function openRouteSheet(route, preset){
+  const kind0 = route ? (route.kind||"percorso") : ((preset&&preset.kind)||"percorso");
+  openSheet(route?"Modifica":"Nuovo rapido",`
+    ${route?"":`<div class="field"><div class="seg" id="rKind"><button data-v="percorso">${ic("route")}Percorso</button><button data-v="spesa">${ic("parking")}Spesa</button></div></div>`}
+    <div class="field"><label>Nome</label><input id="rName"></div>
+    <div id="rPerc">
+      <div class="row"><div class="field"><label>Km totali</label><div class="suffix"><input id="rKm" inputmode="decimal"><i>km</i></div></div>
+      <div class="field"><label>Telepass</label><div class="suffix"><input id="rToll" inputmode="decimal" placeholder="0"><i>€</i></div></div></div>
+      <p class="note" style="margin:-4px 2px 14px">Se è un andata e ritorno, inserisci i km e il Telepass totali. Per calcolare i km usa <b>Nuovo viaggio</b> → Salva come percorso rapido.</p>
+    </div>
+    <div id="rSpesa">
+      <div class="field"><div class="seg" id="rType"><button data-v="telepass">${ic("toll")}Telepass</button><button data-v="benzina">${ic("fuel")}Benzina</button></div></div>
+      <div class="row"><div class="field"><label>Importo</label><div class="suffix"><input id="rAmt" inputmode="decimal" placeholder="0,00"><i>€</i></div></div>
+      <div class="field"><label>Pagata da</label><div class="seg who" id="rPayer"><button data-v="L">Luca</button><button data-v="G">Giada</button></div></div></div>
+      <p class="note" style="margin:-4px 2px 14px">Con un tocco dalla Home registra questa spesa nella data scelta, senza km. Utile per parcheggi o pedaggi fissi.</p>
+    </div>
     <div class="btn-row">${route?`<button class="btn danger-soft" id="rDel" style="flex:0 0 auto">${ic("trash")}</button>`:""}<button class="btn" id="rSave">${ic("check")}Salva</button></div>
   `, sh=>{
-    if(route){ sh.querySelector("#rName").value=route.name; sh.querySelector("#rKm").value=dec(route.km); sh.querySelector("#rToll").value=route.toll?dec(route.toll):""; }
-    sh.querySelector("#rSave").onclick=()=>{
-      const name=sh.querySelector("#rName").value.trim(), km=num(sh.querySelector("#rKm").value), toll=num(sh.querySelector("#rToll").value);
-      if(!name||km<=0){ toast("Inserisci nome e km."); return; }
-      if(route) Object.assign(route,{name,km:r2(km),toll:r2(toll)}); else S.routes.push({id:uid(),name,km:r2(km),toll:r2(toll)});
-      save(); closeSheet(); renderAll(); toast(route?"Percorso aggiornato":"Percorso aggiunto");
+    const q=x=>sh.querySelector(x);
+    let kind=kind0;
+    const show=()=>{ q("#rPerc").classList.toggle("hidden",kind!=="percorso"); q("#rSpesa").classList.toggle("hidden",kind!=="spesa"); q("#rName").placeholder = kind==="spesa" ? "es. Parcheggio Comasina" : "es. Casa → Ufficio (A/R)"; };
+    if(q("#rKind")){ segSet(q("#rKind"),kind); q("#rKind").addEventListener("change",()=>{ kind=segGet(q("#rKind")); show(); }); }
+    const src = route || preset || {};
+    segSet(q("#rType"), src.type||"telepass"); segSet(q("#rPayer"), src.payer||S.settings.tollPayer);
+    if(src.name) q("#rName").value=src.name;
+    if(kind0==="percorso" && route){ q("#rKm").value=dec(route.km); q("#rToll").value=route.toll?dec(route.toll):""; }
+    if(src.amount) q("#rAmt").value=dec(src.amount);
+    show();
+    q("#rSave").onclick=()=>{
+      const name=q("#rName").value.trim();
+      if(kind==="spesa"){
+        const amount=num(q("#rAmt").value);
+        if(!name||amount<=0){ toast("Inserisci nome e importo."); return; }
+        const v={kind:"spesa",name,type:segGet(q("#rType")),amount:r2(amount),payer:segGet(q("#rPayer"))};
+        if(route) Object.assign(route,v); else S.routes.push(Object.assign({id:uid()},v));
+      } else {
+        const km=num(q("#rKm").value), toll=num(q("#rToll").value);
+        if(!name||km<=0){ toast("Inserisci nome e km."); return; }
+        if(route) Object.assign(route,{name,km:r2(km),toll:r2(toll)}); else S.routes.push({id:uid(),name,km:r2(km),toll:r2(toll)});
+      }
+      save(); closeSheet(); renderAll(); toast(route?"Aggiornato":"Aggiunto ai rapidi");
     };
-    const d=sh.querySelector("#rDel");
-    if(d) d.onclick=async()=>{ if(await ask("Eliminare il percorso?",`“${esc(route.name)}” sparirà dai percorsi rapidi. I viaggi già registrati restano.`,"Elimina",true)){ S.routes=S.routes.filter(x=>x!==route); save(); closeSheet(); renderAll(); } };
+    const d=q("#rDel");
+    if(d) d.onclick=async()=>{ if(await ask("Eliminare dai rapidi?",`“${esc(route.name)}” sparirà dai rapidi. I movimenti già registrati restano.`,"Elimina",true)){ S.routes=S.routes.filter(x=>x!==route); save(); closeSheet(); renderAll(); } };
   });
 }
 $("#btnExport").onclick=()=>{ const txt=JSON.stringify(dataOnly()); if(hasBridge) Android.share(txt); else navigator.clipboard.writeText(txt).then(()=>toast("Backup copiato")); };
