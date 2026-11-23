@@ -4,6 +4,10 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
+import android.graphics.Color;
+import android.os.Build;
+import android.view.View;
 import android.os.Bundle;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
@@ -37,11 +41,60 @@ public class MainActivity extends Activity {
         web.setWebViewClient(new WebViewClient());
         web.setWebChromeClient(new WebChromeClient());
         web.addJavascriptInterface(new Bridge(), "Android");
+        boolean dark = isNight();
+        web.setBackgroundColor(dark ? 0xFF0B0D14 : 0xFFF3F4F9);
+        applyBars(dark ? "#0B0D14" : "#F3F4F9", !dark);
         setContentView(web);
         web.loadUrl("file:///android_asset/index.html");
     }
 
+    private boolean isNight() {
+        return (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
+                == Configuration.UI_MODE_NIGHT_YES;
+    }
+
+    @SuppressWarnings("deprecation")
+    private void applyBars(String hex, boolean darkIcons) {
+        int c = Color.parseColor(hex);
+        getWindow().setStatusBarColor(c);
+        getWindow().setNavigationBarColor(c);
+        if (web != null) web.setBackgroundColor(c);
+        View d = getWindow().getDecorView();
+        int f = d.getSystemUiVisibility();
+        if (darkIcons) f |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+        else f &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+        if (Build.VERSION.SDK_INT >= 26) {
+            if (darkIcons) f |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+            else f &= ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+        }
+        d.setSystemUiVisibility(f);
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        if (web != null) web.evaluateJavascript("window.applyTheme && applyTheme()", null);
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    public void onBackPressed() {
+        web.evaluateJavascript("(window.onBack && window.onBack()) ? 'y' : 'n'", value -> {
+            if (value == null || !value.contains("y")) finish();
+        });
+    }
+
     private class Bridge {
+
+        @JavascriptInterface
+        public boolean isDark() {
+            return isNight();
+        }
+
+        @JavascriptInterface
+        public void setBars(final String hex, final boolean darkIcons) {
+            runOnUiThread(() -> applyBars(hex, darkIcons));
+        }
 
         @JavascriptInterface
         public String load() {
