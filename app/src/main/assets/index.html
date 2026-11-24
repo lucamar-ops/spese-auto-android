@@ -190,7 +190,7 @@ textarea{min-height:110px;font-size:13px}
 
 /* nav */
 nav{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));display:flex;background:var(--surface);border-radius:24px;padding:6px;box-shadow:0 8px 30px rgba(15,23,42,.14);z-index:20;border:1px solid var(--line)}
-nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px;border-radius:18px;font-size:11.5px;font-weight:600;color:var(--muted);transition:color .15s, background .15s}
+nav button{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 1px;border-radius:18px;font-size:10.5px;white-space:nowrap;font-weight:600;color:var(--muted);transition:color .15s, background .15s}
 nav button.on{color:var(--acc-ink);background:var(--acc-soft)}
 
 /* sheet */
@@ -212,6 +212,49 @@ nav button.on{color:var(--acc-ink);background:var(--acc-soft)}
 .dialog p{margin:0 0 18px;color:var(--muted);font-size:15px}
 #dlgBack{z-index:60}
 
+/* mine */
+.hero.mine{background:linear-gradient(135deg,#0F766E,#0E7490);box-shadow:0 10px 30px -10px rgba(14,116,144,.55)}
+.privacy{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);margin:-4px 4px 14px}
+.privacy svg{width:14px;height:14px}
+.qa{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.qa button{background:var(--surface);border-radius:18px;padding:14px 6px 12px;box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12.5px;font-weight:650;line-height:1.2;text-align:center}
+.qa button:active{transform:scale(.97)}
+.qa .bubble{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;background:#E0F2F1;color:#0F766E}
+[data-theme=dark] .qa .bubble{background:#0F2E2C;color:#5EEAD4}
+.acc{background:var(--surface);border-radius:18px;box-shadow:var(--shadow);margin-bottom:10px;overflow:hidden}
+.acc>summary{list-style:none;display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer}
+.acc>summary::-webkit-details-marker{display:none}
+.acc>summary .ic{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;flex:none}
+.acc>summary .ic svg{width:19px;height:19px}
+.acc>summary .tx{flex:1;min-width:0}
+.acc>summary .tx b{display:block;font-weight:650;font-size:15px}
+.acc>summary .tx span{font-size:12.5px;color:var(--muted)}
+.acc>summary .am{font-weight:750;font-size:16px;white-space:nowrap}
+.acc>summary .chev{color:var(--muted);transition:transform .2s;width:18px;height:18px}
+.acc[open]>summary .chev{transform:rotate(90deg)}
+.acc .body{padding:0 16px 12px 66px;animation:fade .2s ease}
+.acc .ln{display:flex;justify-content:space-between;gap:10px;padding:7px 0;font-size:14px;border-top:1px solid var(--line)}
+.acc .ln:first-child{border-top:0}
+.acc .ln span:last-child{font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
+.acc .ln.muted{color:var(--muted);font-size:13px}
+.acc .ln.tot{font-weight:700}
+.c-fuel{background:var(--giada-soft);color:var(--giada)}
+.c-toll{background:#E6F6EC;color:#15803D} [data-theme=dark] .c-toll{background:#13301F;color:#4ADE80}
+.c-km{background:var(--acc-soft);color:var(--acc-ink)}
+.c-oth{background:#F1EDFD;color:#7C3AED} [data-theme=dark] .c-oth{background:#2A2145;color:#C4B5FD}
+.bar2{height:8px;border-radius:9px;background:var(--surface2);overflow:hidden;display:flex;margin:4px 0 8px}
+.bar2 i{display:block;height:100%}
+.bar2 i.a{background:var(--giada)} .bar2 i.b{background:#0E7490}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-bottom:4px}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+.warn{background:#FEF3C7;color:#92400E;border-radius:12px;padding:9px 12px;font-size:13px;margin:6px 0 4px}
+[data-theme=dark] .warn{background:#3A2E0F;color:#FCD34D}
+.acc .body .kmtbl{margin-left:-50px;width:calc(100% + 50px)}
+.kmtbl{width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums}
+.kmtbl th{font-size:11.5px;color:var(--muted);font-weight:600;text-align:right;padding:4px 0 6px}
+.kmtbl th:first-child,.kmtbl td:first-child{text-align:left}
+.kmtbl td{text-align:right;padding:6px 0;border-top:1px solid var(--line)}
+.kmtbl td:first-child{text-transform:capitalize;font-weight:550}
 /* sync */
 .sync-st{display:flex;align-items:center;gap:8px;font-size:14px;margin:-2px 2px 14px}
 .dot{width:9px;height:9px;border-radius:50%;background:var(--ok);flex:none}
@@ -265,6 +308,14 @@ nav button.on{color:var(--acc-ink);background:var(--acc-soft)}
   </div>
 </section>
 
+<!-- SPESE MIE -->
+<section id="v-mine" class="view hidden">
+  <div class="seg" id="mineMode" style="margin-bottom:14px"><button data-v="m" class="on">Mese</button><button data-v="y">Anno</button></div>
+  <div class="monthnav"><button class="icon-btn" data-pm="-1"><svg class="i" data-i="chevL"></svg></button><b id="mineLabel"></b><button class="icon-btn" data-pm="1"><svg class="i" data-i="chevR"></svg></button></div>
+  <div class="privacy"><svg class="i" data-i="lock"></svg>Visibile solo su questo telefono, non condiviso con Giada</div>
+  <div id="mineView"></div>
+</section>
+
 <!-- IMPOSTAZIONI -->
 <section id="v-set" class="view hidden">
   <div class="card">
@@ -311,7 +362,8 @@ nav button.on{color:var(--acc-ink);background:var(--acc-soft)}
   <button data-tab="home" class="on"><svg class="i" data-i="home"></svg>Home</button>
   <button data-tab="list"><svg class="i" data-i="list"></svg>Movimenti</button>
   <button data-tab="sum"><svg class="i" data-i="chart"></svg>Riepilogo</button>
-  <button data-tab="set"><svg class="i" data-i="sliders"></svg>Impostazioni</button>
+  <button data-tab="mine"><svg class="i" data-i="user"></svg>Mie spese</button>
+  <button data-tab="set"><svg class="i" data-i="sliders"></svg>Opzioni</button>
 </nav>
 
 <div class="backdrop" id="shBack"></div>
@@ -345,6 +397,17 @@ const ICONS = {
   swap:"M7 20V4M3 8l4-4 4 4M17 4v16M13 16l4 4 4-4",
   check:"M20 6 9 17l-5-5",
   parking:"M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM9 17V7h4a3 3 0 0 1 0 6H9",
+  user:"M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8a4 4 0 0 0 0 8z",
+  gauge:"M12 14l4-4M3.34 19a10 10 0 1 1 17.32 0",
+  receipt:"M4 2v20l3-2 3 2 3-2 3 2 3-2 3 2V2l-3 2-3-2-3 2-3-2-3 2zM8 8h8M8 12h8M8 16h5",
+  wallet:"M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4",
+  shield:"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",
+  wrench:"M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z",
+  tire:"M12 2a10 10 0 1 0 0 20a10 10 0 0 0 0-20zM12 8a4 4 0 1 0 0 8a4 4 0 0 0 0-8zM12 2v6M12 16v6M2 12h6M16 12h6",
+  doc:"M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M9 13h6M9 17h4",
+  dots:"M5 12h.01M12 12h.01M19 12h.01",
+  lock:"M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2zM7 11V7a5 5 0 0 1 10 0v4",
+  plus:"M12 5v14M5 12h14",
   route:"M6 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM6 15V9a4 4 0 0 1 4-4h2M18 9v6a4 4 0 0 1-4 4h-2"
 };
 const ic = (n, cls="") => `<svg class="i ${cls}" viewBox="0 0 24 24"><path d="${ICONS[n]}"/></svg>`;
@@ -353,9 +416,9 @@ function hydrateIcons(root=document){ root.querySelectorAll("svg[data-i]").forEa
 /* ================= storage ================= */
 const KEY="speseauto_v1";
 const hasBridge = typeof window.Android!=="undefined";
-const DEFAULT={settings:{fuel:0.10,wear:0.03,tollPayer:"L",theme:"auto"},routes:[],trips:[],expenses:[]};
+const DEFAULT={settings:{fuel:0.10,wear:0.03,tollPayer:"L",theme:"auto"},routes:[],trips:[],expenses:[],mine:{odo:[],bills:[],costs:[]}};
 const clone = o => JSON.parse(JSON.stringify(o));
-function normalize(d){ return Object.assign(clone(DEFAULT), d, {settings:Object.assign({},DEFAULT.settings,(d&&d.settings)||{})}); }
+function normalize(d){ const m=(d&&d.mine)||{}; return Object.assign(clone(DEFAULT), d, {settings:Object.assign({},DEFAULT.settings,(d&&d.settings)||{}), mine:{odo:m.odo||[],bills:m.bills||[],costs:m.costs||[]}}); }
 function load(){ try{ const raw = hasBridge? Android.load() : localStorage.getItem(KEY); if(raw) return normalize(JSON.parse(raw)); }catch(e){} return clone(DEFAULT); }
 let S = load();
 function saveLocal(){ const raw=JSON.stringify(S); try{ hasBridge? Android.save(raw) : localStorage.setItem(KEY,raw); }catch(e){} }
@@ -506,11 +569,11 @@ function updDateLbl(){ const v=addDate.value||today(); $("#dateLbl").textContent
 addDate.onchange=updDateLbl;
 
 /* ================= tabs ================= */
-const TITLES={home:["Luca & Giada","Spese Auto"],list:["Tutti i viaggi e le spese","Movimenti"],sum:["Chi deve dare a chi","Riepilogo"],set:["Tariffe, percorsi e dati","Impostazioni"]};
+const TITLES={mine:["Solo a tuo carico","Mie spese"],home:["Luca & Giada","Spese Auto"],list:["Tutti i viaggi e le spese","Movimenti"],sum:["Chi deve dare a chi","Riepilogo"],set:["Tariffe, percorsi e dati","Impostazioni"]};
 function showTab(t){
   curTab=t;
   $$("nav button").forEach(b=>b.classList.toggle("on",b.dataset.tab===t));
-  ["home","list","sum","set"].forEach(x=>$("#v-"+x).classList.toggle("hidden",x!==t));
+  ["home","list","sum","mine","set"].forEach(x=>$("#v-"+x).classList.toggle("hidden",x!==t));
   $("#topSub").textContent=TITLES[t][0]; $("#topTitle").textContent=TITLES[t][1];
   $("#datePill").classList.toggle("hidden",t!=="home");
   window.scrollTo(0,0);
@@ -869,9 +932,202 @@ $("#btnImport").onclick=()=>openSheet("Ripristina backup",`
 });
 $("#btnResetAll").onclick=async()=>{
   const n=S.trips.length+S.expenses.filter(e=>!e.tripId).length;
-  if(!(await ask("Cancellare tutti i dati?",`Verranno eliminati <b>${n} movimenti</b>, ${S.routes.length} percorsi rapidi e le impostazioni. <b>L'operazione non si può annullare.</b>${S.sync&&S.sync.code?" I dati vengono cancellati <b>anche sul telefono di Giada</b>.":""} Se vuoi, prima esporta un backup.`,"Cancella tutto",true))) return;
+  if(!(await ask("Cancellare tutti i dati?",`Verranno eliminati <b>${n} movimenti</b>, ${S.routes.length} percorsi rapidi, le tue spese personali e le impostazioni. <b>L'operazione non si può annullare.</b>${S.sync&&S.sync.code?" I dati vengono cancellati <b>anche sul telefono di Giada</b>.":""} Se vuoi, prima esporta un backup.`,"Cancella tutto",true))) return;
   const sy=S.sync; S=clone(DEFAULT); if(sy) S.sync=sy; save(); applyTheme(); renderAll(); showTab("home"); toast("Tutti i dati sono stati cancellati");
 };
+
+/* ================= SPESE MIE ================= */
+const COST_CATS={bollo:["Bollo","doc"],assicurazione:["Assicurazione","shield"],manutenzione:["Manutenzione","wrench"],gomme:["Gomme","tire"],canone:["Canone Telepass","toll"],altro:["Altro","dots"]};
+let mineYM=today().slice(0,7), mineY=+today().slice(0,4), mineMode="m";
+const DAY=86400000;
+const dms=d=>Date.UTC(+d.slice(0,4),+d.slice(5,7)-1,+d.slice(8,10));
+const ymRange=ym=>{ const [y,m]=ym.split("-").map(Number); return [Date.UTC(y,m-1,1), Date.UTC(y,m,1)]; }; // [start,end)
+const overlapDays=(a0,a1,b0,b1)=>Math.max(0,(Math.min(a1,b1)-Math.max(a0,b0))/DAY);
+const odoSorted=()=>[...S.mine.odo].sort((a,b)=>a.date.localeCompare(b.date)||a.km-b.km);
+// km dal contachilometri ripartiti per giorni tra due letture
+function odoKm(r0,r1){
+  const o=odoSorted(); let km=0, cov=0;
+  for(let i=1;i<o.length;i++){
+    const a=dms(o[i-1].date)+DAY, b=dms(o[i].date)+DAY, d=o[i].km-o[i-1].km; // giorni (a-1, b-1]
+    if(b<=a||d<0) continue;
+    const ov=overlapDays(a,b,r0,r1); if(!ov) continue;
+    km+=d*ov/((b-a)/DAY); cov+=ov;
+  }
+  return {km, cov, days:(r1-r0)/DAY};
+}
+function sharedIn(r0,r1){
+  const inR=d=>{ const t=dms(d); return t>=r0&&t<r1; };
+  const trips=S.trips.filter(t=>inR(t.date)), tolls=S.expenses.filter(e=>e.type==="telepass"&&inR(e.date));
+  return { km:trips.reduce((s,t)=>s+t.km,0), fuel:trips.reduce((s,t)=>s+t.km*t.fuel,0),
+           tpL:tolls.filter(e=>e.payer==="L").reduce((s,e)=>s+e.amount,0), tpG:tolls.filter(e=>e.payer==="G").reduce((s,e)=>s+e.amount,0) };
+}
+function calcMine(r0,r1){
+  const o=odoKm(r0,r1), sh=sharedIn(r0,r1), rate=S.settings.fuel;
+  const totKm=o.km, myKm=Math.max(0,totKm-sh.km);
+  const fuelShared=sh.fuel/2, fuelMine=myKm*rate;
+  // Telepass: per ogni fattura, parte "fatti miei" = fattura − pedaggi condivisi pagati da Luca nel periodo; ripartita per giorni
+  let bill=0, billSharedL=0, tollMine=0, billCov=0;
+  S.mine.bills.forEach(b=>{
+    const b0=dms(b.from), b1=dms(b.to)+DAY, ov=overlapDays(b0,b1,r0,r1); if(!ov) return;
+    const f=ov/((b1-b0)/DAY), shB=sharedIn(b0,b1).tpL;
+    bill+=b.amount*f; billSharedL+=shB*f; tollMine+=(b.amount-shB)*f; billCov+=ov;
+  });
+  const tollShared=(sh.tpL+sh.tpG)/2;
+  const costs=S.mine.costs.filter(c=>{ const t=dms(c.date); return t>=r0&&t<r1; });
+  const other=costs.reduce((s,c)=>s+c.amount,0);
+  const days=(r1-r0)/DAY;
+  return {totKm, sharedKm:sh.km, myKm, odoCov:o.cov/days, fuelShared, fuelMine, fuel:fuelShared+fuelMine,
+          bill, billSharedL, tollMine, tollShared, toll:tollMine+tollShared, billCov:billCov/days,
+          costs, other, total:fuelShared+fuelMine+tollMine+tollShared+other};
+}
+function accHTML(icon,cls,title,sub,amt,body,open){
+  return `<details class="acc"${open?" open":""}><summary><div class="ic ${cls}">${ic(icon)}</div><div class="tx"><b>${title}</b><span>${sub}</span></div><div class="am num">${amt}</div>${ic("chevR","chev")}</summary><div class="body">${body}</div></details>`;
+}
+const ln=(a,b,cls="")=>`<div class="ln ${cls}"><span>${a}</span><span>${b}</span></div>`;
+function renderMine(){
+  const v=$("#mineView"); if(!v) return;
+  const isY=mineMode==="y";
+  $("#mineLabel").textContent = isY? String(mineY) : monthLabel(mineYM);
+  const [r0,r1] = isY? [Date.UTC(mineY,0,1),Date.UTC(mineY+1,0,1)] : ymRange(mineYM);
+  const c=calcMine(r0,r1), lbl=isY? String(mineY) : (m=>m.charAt(0).toUpperCase()+m.slice(1))(monthName(mineYM));
+  const noOdo=isY? c.odoCov===0 : c.odoCov<0.99, noBill=isY? c.bill===0 : c.billCov<0.99;
+  const odoN=S.mine.odo.length;
+  const pc=(a,b)=>b>0?Math.round(a/b*100):0;
+  let h=`<div class="hero mine"><div class="lbl">${lbl} · a tuo carico</div><div class="amt num">${eur(c.total)}</div>
+    <div class="stats"><span class="pill num">${kmf(c.totKm)}</span>${c.totKm>0?`<span class="pill num">${(c.total/c.totKm).toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2})} €/km</span>`:""}</div></div>`;
+  if(!isY) h+=`<div class="qa">
+      <button id="mOdo"><div class="bubble">${ic("gauge")}</div>Km di fine mese</button>
+      <button id="mBill"><div class="bubble">${ic("receipt")}</div>Fattura Telepass</button>
+      <button id="mCost"><div class="bubble">${ic("wallet")}</div>Altra spesa</button></div>`;
+  // benzina
+  const fb=c.fuel>0?`<div class="bar2"><i class="a" style="width:${pc(c.fuelShared,c.fuel)}%"></i><i class="b" style="width:${pc(c.fuelMine,c.fuel)}%"></i></div>
+     <div class="legend"><span><i style="background:var(--giada)"></i>Con Giada</span><span><i style="background:#0E7490"></i>Per fatti miei</span></div>`:"";
+  h+=accHTML("fuel","c-fuel","Benzina", noOdo&&odoN<2?"Inserisci i km del contachilometri":"Con Giada e per fatti tuoi", eur(c.fuel),
+     fb+ln("Viaggi con Giada (tua metà)",eur(c.fuelShared))+ln("Per fatti miei",eur(c.fuelMine))
+     +ln(`${kmf(c.myKm)} × ${rate(S.settings.fuel)}`,"","muted")
+     +(noOdo?`<div class="warn">${odoN<2?"Servono almeno due letture del contachilometri: la prima fa da punto di partenza.":"Il periodo non è coperto del tutto dalle letture del contachilometri: la parte per fatti tuoi è parziale."}</div>`:""));
+  // telepass
+  h+=accHTML("toll","c-toll","Telepass", noBill?(c.bill>0?"Fattura parziale per il periodo":"Fattura non ancora inserita"):(isY?"Fatture meno i viaggi con Giada":"Fattura meno i viaggi con Giada"), eur(c.toll),
+     ln("Fattura (pedaggi e parcheggi)",c.bill>0?eur(c.bill):"—")+ln("− Viaggi con Giada sulla fattura",c.bill>0?eur(-c.billSharedL):"—")
+     +ln("= Per fatti miei",eur(c.tollMine),"tot")+ln("+ Tua metà dei viaggi con Giada",eur(c.tollShared))
+     +ln("Totale a tuo carico",eur(c.toll),"tot")
+     +(noBill?`<div class="warn">${c.bill>0?"La fattura copre solo parte del periodo.":"Senza fattura conto solo la tua metà dei viaggi con Giada."}</div>`:""));
+  // km
+  let kmBody=(c.totKm>0?`<div class="bar2"><i class="a" style="width:${pc(Math.min(c.sharedKm,c.totKm),c.totKm)}%"></i><i class="b" style="width:${pc(c.myKm,c.totKm)}%"></i></div>`:"")
+     +ln("Con Giada",kmf(c.sharedKm))+ln("Per fatti miei",kmf(c.myKm))+ln("Totale contachilometri",kmf(c.totKm),"tot");
+  if(c.sharedKm>c.totKm+0.5 && !noOdo) kmBody+=`<div class="warn">I km dei viaggi con Giada superano quelli del contachilometri: controlla le letture.</div>`;
+  if(isY){
+    const rows=[...Array(12)].map((_,i)=>{ const ym=mineY+"-"+String(i+1).padStart(2,"0"), [a,b]=ymRange(ym), x=calcMine(a,b);
+      return x.totKm>0||x.sharedKm>0?`<tr><td>${new Date(mineY,i,1).toLocaleDateString("it-IT",{month:"short"})}</td><td>${Math.round(x.totKm).toLocaleString("it-IT")}</td><td>${Math.round(x.sharedKm).toLocaleString("it-IT")}</td><td>${Math.round(x.myKm).toLocaleString("it-IT")}</td></tr>`:""; }).join("");
+    kmBody+= rows?`<table class="kmtbl" style="margin-top:8px"><tr><th>Mese</th><th>Totali</th><th>Giada</th><th>Miei</th></tr>${rows}</table>`:"";
+  }
+  h+=accHTML("gauge","c-km",isY?"Km dell'anno":"Km del mese", isY?"Dettaglio mese per mese":"Contachilometri", kmf(c.totKm), kmBody);
+  // altre spese
+  const byCat={}; c.costs.forEach(x=>byCat[x.cat]=(byCat[x.cat]||0)+x.amount);
+  h+=accHTML("wallet","c-oth","Altre spese", c.costs.length? Object.keys(byCat).map(k=>COST_CATS[k][0]).join(", ") : "Bollo, assicurazione, interventi…", eur(c.other),
+     c.costs.length? (isY? Object.keys(byCat).map(k=>ln(COST_CATS[k][0],eur(byCat[k]))).join("") :
+       c.costs.sort((a,b)=>a.date.localeCompare(b.date)).map(x=>`<div class="ln" data-cost="${x.id}" style="cursor:pointer"><span>${COST_CATS[x.cat][0]}${x.note?" · "+esc(x.note):""}<br><small class="muted">${fmtShort(x.date)}</small></span><span>${eur(x.amount)}</span></div>`).join(""))
+     : `<div class="ln muted"><span>Nessuna spesa ${isY?"nell'anno":"nel mese"}</span><span></span></div>`);
+  // inserimenti
+  if(!isY){
+    const odoM=S.mine.odo.filter(o=>{ const t=dms(o.date); return t>=r0&&t<r1; });
+    const billsM=S.mine.bills.filter(b=>overlapDays(dms(b.from),dms(b.to)+DAY,r0,r1)>0);
+    if(odoM.length||billsM.length){
+      h+=`<div class="sec-t">Letture e fatture</div><div class="group">`
+       + odoM.map(o=>`<button class="item" data-odo="${o.id}"><div class="ic">${ic("gauge")}</div><div class="tx"><b class="num">${Math.round(o.km).toLocaleString("it-IT")} km</b><span>Contachilometri · ${fmtShort(o.date)}</span></div></button>`).join("")
+       + billsM.map(b=>`<button class="item" data-bill="${b.id}"><div class="ic toll">${ic("receipt")}</div><div class="tx"><b>Fattura Telepass</b><span>${fmtShort(b.from)} – ${fmtShort(b.to)}</span></div><div class="am num">${eur(b.amount)}</div></button>`).join("")
+       + `</div>`;
+    }
+  }
+  h+=`<p class="note">Benzina calcolata a km con la tariffa attuale (${rate(S.settings.fuel)}). Nei viaggi con Giada conta solo la tua metà; l'usura non è inclusa.</p>`;
+  v.innerHTML=h;
+  if(!isY){ v.querySelector("#mOdo").onclick=()=>openOdoSheet(); v.querySelector("#mBill").onclick=()=>openBillSheet(); v.querySelector("#mCost").onclick=()=>openCostSheet(); }
+}
+$("#mineView").addEventListener("click",e=>{
+  const o=e.target.closest("[data-odo]"), b=e.target.closest("[data-bill]"), c=e.target.closest("[data-cost]");
+  if(o) openOdoSheet(S.mine.odo.find(x=>x.id===o.dataset.odo));
+  if(b) openBillSheet(S.mine.bills.find(x=>x.id===b.dataset.bill));
+  if(c) openCostSheet(S.mine.costs.find(x=>x.id===c.dataset.cost));
+});
+$$("[data-pm]").forEach(b=>b.onclick=()=>{ const d=+b.dataset.pm; if(mineMode==="y") mineY+=d; else { const [y,m]=mineYM.split("-").map(Number); const t=new Date(y,m-1+d,1); mineYM=t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0"); } renderMine(); });
+$("#mineMode").addEventListener("change",()=>{ mineMode=segGet($("#mineMode")); if(mineMode==="y") mineY=+mineYM.slice(0,4); renderMine(); });
+const lastDay=ym=>{ const [y,m]=ym.split("-").map(Number); const d=new Date(Date.UTC(y,m,0)); return d.toISOString().slice(0,10); };
+const defDate=()=> mineYM===today().slice(0,7)? today() : lastDay(mineYM);
+const delBtn=x=>x?`<button class="btn danger-soft" id="xDel" style="flex:0 0 auto">${ic("trash")}</button>`:"";
+function bindDel(sh,item,list,what){ const d=sh.querySelector("#xDel"); if(d) d.onclick=async()=>{ if(await ask(`Eliminare ${what}?`,"L'operazione si può annullare subito dopo.","Elimina",true)){ const snap=snapshot(); S.mine[list]=S.mine[list].filter(x=>x!==item); save(); closeSheet(); renderMine(); toast("Eliminato",()=>{ restore(snap); renderMine(); }); } }; }
+function openOdoSheet(o){
+  const prev=odoSorted().filter(x=>x!==o).pop();
+  openSheet(o?"Modifica lettura":"Km del contachilometri",`
+    ${prev&&!o?`<div class="calc-box" style="margin-top:0"><div class="muted" style="font-size:13px">Ultima lettura · ${fmtShort(prev.date)}</div><div class="big num">${Math.round(prev.km).toLocaleString("it-IT")} km</div></div>`:""}
+    ${odoN0()===0&&!o?`<p class="note" style="margin:-4px 2px 14px">È la prima lettura: fa da punto di partenza. I km si contano dalla prossima.</p>`:""}
+    <div class="field"><label>Km totali segnati sul cruscotto</label><div class="suffix"><input id="oKm" inputmode="numeric" placeholder="es. 24.350" style="font-size:22px;font-weight:700"><i>km</i></div></div>
+    <div class="field"><label>Data della lettura</label><input type="date" id="oDate"></div>
+    <div id="oPrev" class="note" style="margin:-6px 2px 14px"></div>
+    <div class="btn-row">${delBtn(o)}<button class="btn" id="oSave">${ic("check")}Salva</button></div>`, sh=>{
+    const k=sh.querySelector("#oKm"), d=sh.querySelector("#oDate"), pv=sh.querySelector("#oPrev");
+    d.value=o?o.date:defDate(); if(o) k.value=String(o.km);
+    const upd=()=>{ const v=num(k.value.replace(/\./g,"")), p=odoSorted().filter(x=>x!==o&&x.date<=d.value).pop(); pv.textContent = p&&v>p.km ? `+${Math.round(v-p.km).toLocaleString("it-IT")} km dalla lettura del ${fmtShort(p.date)}` : ""; };
+    k.addEventListener("input",upd); d.addEventListener("change",upd); upd();
+    if(!o) setTimeout(()=>k.focus(),300);
+    sh.querySelector("#oSave").onclick=()=>{
+      const v=num(k.value.replace(/\./g,"")), date=d.value||today();
+      if(v<=0){ toast("Inserisci i km."); return; }
+      const others=odoSorted().filter(x=>x!==o), before=others.filter(x=>x.date<=date).pop(), after=others.find(x=>x.date>date);
+      if(before&&v<before.km){ toast(`Valore più basso della lettura del ${fmtShort(before.date)} (${Math.round(before.km).toLocaleString("it-IT")} km).`); return; }
+      if(after&&v>after.km){ toast(`Valore più alto della lettura del ${fmtShort(after.date)}.`); return; }
+      const snap=snapshot();
+      if(o) Object.assign(o,{km:v,date}); else S.mine.odo.push({id:uid(),km:v,date});
+      save(); closeSheet(); renderMine(); toast("Lettura salvata",()=>{ restore(snap); renderMine(); });
+    };
+    bindDel(sh,o,"odo","la lettura");
+  });
+}
+const odoN0=()=>S.mine.odo.length;
+function openBillSheet(b){
+  const [y,m]=mineYM.split("-").map(Number);
+  openSheet(b?"Modifica fattura":"Fattura Telepass",`
+    <div class="field"><label>Importo pedaggi e parcheggi</label><div class="suffix"><input id="bAmt" inputmode="decimal" placeholder="0,00" style="font-size:22px;font-weight:700"><i>€</i></div></div>
+    <p class="note" style="margin:-6px 2px 14px">Escludi il canone: inseriscilo in <b>Altra spesa → Canone Telepass</b>.</p>
+    <div class="row"><div class="field"><label>Transiti dal</label><input type="date" id="bFrom"></div><div class="field"><label>al</label><input type="date" id="bTo"></div></div>
+    <div id="bPrev" class="calc-box hidden"></div>
+    <div class="btn-row">${delBtn(b)}<button class="btn" id="bSave">${ic("check")}Salva</button></div>`, sh=>{
+    const a=sh.querySelector("#bAmt"), f=sh.querySelector("#bFrom"), t=sh.querySelector("#bTo"), pv=sh.querySelector("#bPrev");
+    f.value=b?b.from:mineYM+"-01"; t.value=b?b.to:lastDay(mineYM); if(b) a.value=dec(b.amount);
+    const upd=()=>{ const v=num(a.value); if(!f.value||!t.value||t.value<f.value){ pv.classList.add("hidden"); return; }
+      const sh2=sharedIn(dms(f.value),dms(t.value)+DAY); pv.classList.remove("hidden");
+      pv.innerHTML=`<div class="muted" style="font-size:13px">Viaggi con Giada pagati con il tuo Telepass nel periodo: ${eur(sh2.tpL)}</div><div class="big num">${eur(v-sh2.tpL)}</div><div class="det">per fatti tuoi</div>`; };
+    [a,f,t].forEach(x=>x.addEventListener("input",upd)); upd();
+    if(!b) setTimeout(()=>a.focus(),300);
+    sh.querySelector("#bSave").onclick=()=>{
+      const v=num(a.value); if(v<=0){ toast("Inserisci l'importo."); return; }
+      if(!f.value||!t.value||t.value<f.value){ toast("Controlla il periodo dei transiti."); return; }
+      const snap=snapshot(), x={amount:r2(v),from:f.value,to:t.value};
+      if(b) Object.assign(b,x); else S.mine.bills.push(Object.assign({id:uid()},x));
+      save(); closeSheet(); renderMine(); toast("Fattura salvata",()=>{ restore(snap); renderMine(); });
+    };
+    bindDel(sh,b,"bills","la fattura");
+  });
+}
+function openCostSheet(c){
+  openSheet(c?"Modifica spesa":"Altra spesa",`
+    <div class="field"><label>Tipo</label><div class="routes" id="cCat" style="grid-template-columns:repeat(3,1fr);gap:8px">${Object.entries(COST_CATS).map(([k,[n,i]])=>`<button class="route" data-v="${k}" style="padding:10px;text-align:center"><div class="ico" style="margin:0 auto">${ic(i)}</div><b style="font-size:12.5px;margin:6px 0 0">${n}</b></button>`).join("")}</div></div>
+    <div class="field"><label>Importo</label><div class="suffix"><input id="cAmt" inputmode="decimal" placeholder="0,00" style="font-size:22px;font-weight:700"><i>€</i></div></div>
+    <div class="field"><label>Data</label><input type="date" id="cDate"></div>
+    <div class="field"><label>Nota (facoltativa)</label><input id="cNote" placeholder="es. tagliando 30.000 km"></div>
+    <div class="btn-row">${delBtn(c)}<button class="btn" id="cSave">${ic("check")}Salva</button></div>`, sh=>{
+    let cat=c?c.cat:"bollo";
+    const paint=()=>sh.querySelectorAll("#cCat .route").forEach(x=>{ const on=x.dataset.v===cat; x.style.outline=on?"2px solid #0E7490":"none"; x.style.background=on?"var(--surface2)":""; });
+    sh.querySelector("#cCat").addEventListener("click",e=>{ const x=e.target.closest("[data-v]"); if(x){ cat=x.dataset.v; paint(); } }); paint();
+    sh.querySelector("#cDate").value=c?c.date:defDate(); if(c){ sh.querySelector("#cAmt").value=dec(c.amount); sh.querySelector("#cNote").value=c.note||""; }
+    sh.querySelector("#cSave").onclick=()=>{
+      const v=num(sh.querySelector("#cAmt").value); if(v<=0){ toast("Inserisci l'importo."); return; }
+      const snap=snapshot(), x={cat,amount:r2(v),date:sh.querySelector("#cDate").value||today(),note:sh.querySelector("#cNote").value.trim()};
+      if(c) Object.assign(c,x); else S.mine.costs.push(Object.assign({id:uid()},x));
+      save(); closeSheet(); renderMine(); toast("Spesa salvata",()=>{ restore(snap); renderMine(); });
+    };
+    bindDel(sh,c,"costs","la spesa");
+  });
+}
 
 /* ================= SYNC (Firebase Firestore REST) ================= */
 const FS_PROJECT="spese-auto-39d1c";
@@ -985,7 +1241,7 @@ function renderSync(){
 }
 
 /* ================= boot ================= */
-function renderAll(){ renderHome(); renderMonth(); renderSettings(); renderSync(); if(!$("#sumYear").classList.contains("hidden")) renderYear(); }
+function renderAll(){ renderHome(); renderMonth(); renderSettings(); renderSync(); renderMine(); if(!$("#sumYear").classList.contains("hidden")) renderYear(); }
 hydrateIcons(); bindSeg(document);
 applyTheme();
 try{ matchMedia("(prefers-color-scheme: dark)").addEventListener("change",applyTheme); }catch(e){}
