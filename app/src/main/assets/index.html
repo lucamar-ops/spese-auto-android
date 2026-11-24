@@ -332,6 +332,12 @@ nav button.on{color:var(--acc-ink);background:var(--acc-soft)}
   </div>
 
   <div class="card">
+    <div class="card-h"><h2>Questo telefono è di</h2></div>
+    <div class="seg who" id="setMe"><button data-v="L">Luca</button><button data-v="G">Giada</button></div>
+    <p class="note">Impostazione solo di questo telefono. Su quello di Giada la scheda <b>Mie spese</b> viene nascosta.</p>
+  </div>
+
+  <div class="card">
     <div class="card-h"><h2>Tema</h2></div>
     <div class="seg" id="setTheme"><button data-v="auto">Automatico</button><button data-v="light">Chiaro</button><button data-v="dark">Scuro</button></div>
   </div>
@@ -418,7 +424,7 @@ function hydrateIcons(root=document){ root.querySelectorAll("svg[data-i]").forEa
 /* ================= storage ================= */
 const KEY="speseauto_v1";
 const hasBridge = typeof window.Android!=="undefined";
-const DEFAULT={settings:{fuel:0.10,wear:0.03,tollPayer:"L",theme:"auto"},routes:[],trips:[],expenses:[],mine:{odo:[],bills:[],costs:[]}};
+const DEFAULT={settings:{fuel:0.10,wear:0.03,tollPayer:"L",theme:"auto",me:"L"},routes:[],trips:[],expenses:[],mine:{odo:[],bills:[],costs:[]}};
 const clone = o => JSON.parse(JSON.stringify(o));
 function normalize(d){ const m=(d&&d.mine)||{}; return Object.assign(clone(DEFAULT), d, {settings:Object.assign({},DEFAULT.settings,(d&&d.settings)||{}), mine:{odo:m.odo||[],bills:m.bills||[],costs:m.costs||[]}}); }
 function load(){ try{ const raw = hasBridge? Android.load() : localStorage.getItem(KEY); if(raw) return normalize(JSON.parse(raw)); }catch(e){} return clone(DEFAULT); }
@@ -873,7 +879,7 @@ $("#sumMode").addEventListener("change",()=>setSumMode(segGet($("#sumMode"))));
 function renderSettings(){
   if(document.activeElement!==$("#setFuel")) $("#setFuel").value=dec(S.settings.fuel);
   if(document.activeElement!==$("#setWear")) $("#setWear").value=dec(S.settings.wear);
-  segSet($("#setTollPayer"),S.settings.tollPayer); segSet($("#setTheme"),S.settings.theme);
+  segSet($("#setTollPayer"),S.settings.tollPayer); segSet($("#setTheme"),S.settings.theme); segSet($("#setMe"),S.settings.me||"L"); applyMe();
   $("#setTotal").textContent=rate(S.settings.fuel+S.settings.wear);
   $("#routeList").innerHTML = S.routes.length ? S.routes.map((r,i)=>`<div class="rrow">
       <div class="tx"><b>${esc(r.name)}</b><span class="num">${r.kind==="spesa"?(r.type==="benzina"?"Benzina":"Telepass")+" "+eur(r.amount)+" · "+who(r.payer):kmf(r.km)+(r.toll>0?" · Telepass "+eur(r.toll):"")}</span></div>
@@ -884,6 +890,8 @@ function renderSettings(){
 }
 ["#setFuel","#setWear"].forEach(s=>$(s).addEventListener("input",()=>{ S.settings.fuel=num($("#setFuel").value); S.settings.wear=num($("#setWear").value); save(); $("#setTotal").textContent=rate(S.settings.fuel+S.settings.wear); renderHome(); }));
 $("#setTollPayer").addEventListener("change",()=>{ S.settings.tollPayer=segGet($("#setTollPayer")); save(); });
+function applyMe(){ const g=S.settings.me==="G"; $('nav button[data-tab="mine"]').classList.toggle("hidden",g); if(g&&curTab==="mine") showTab("home"); }
+$("#setMe").addEventListener("change",()=>{ S.settings.me=segGet($("#setMe")); saveLocal(); applyMe(); });
 $("#setTheme").addEventListener("change",()=>{ S.settings.theme=segGet($("#setTheme")); save(); applyTheme(); });
 $("#routeList").addEventListener("click",e=>{
   const mv=e.target.closest("[data-mv]"), ed=e.target.closest("[data-ed]");
@@ -944,13 +952,13 @@ $("#btnImport").onclick=()=>openSheet("Ripristina backup",`
   sh.querySelector("#impGo").onclick=async()=>{
     let d; try{ d=JSON.parse(sh.querySelector("#impTxt").value); if(!Array.isArray(d.trips)||!Array.isArray(d.expenses)) throw 0; }catch(e){ toast("Testo del backup non valido"); return; }
     if(!(await ask("Ripristinare il backup?","Tutti i dati attuali verranno sostituiti da quelli del backup.","Ripristina",true))) return;
-    const sy=S.sync; delete d.sync; S=normalize(d); if(sy) S.sync=sy; save(); closeSheet(); applyTheme(); renderAll(); toast("Backup ripristinato");
+    const sy=S.sync, me=S.settings.me; delete d.sync; S=normalize(d); if(sy) S.sync=sy; S.settings.me=me; save(); closeSheet(); applyTheme(); renderAll(); toast("Backup ripristinato");
   };
 });
 $("#btnResetAll").onclick=async()=>{
   const n=S.trips.length+S.expenses.filter(e=>!e.tripId).length;
   if(!(await ask("Cancellare tutti i dati?",`Verranno eliminati <b>${n} movimenti</b>, ${S.routes.length} percorsi rapidi, le tue spese personali e le impostazioni. <b>L'operazione non si può annullare.</b>${S.sync&&S.sync.code?" I dati vengono cancellati <b>anche sul telefono di Giada</b>.":""} Se vuoi, prima esporta un backup.`,"Cancella tutto",true))) return;
-  const sy=S.sync; S=clone(DEFAULT); if(sy) S.sync=sy; save(); applyTheme(); renderAll(); showTab("home"); toast("Tutti i dati sono stati cancellati");
+  const sy=S.sync, me=S.settings.me; S=clone(DEFAULT); if(sy) S.sync=sy; S.settings.me=me; save(); applyTheme(); renderAll(); showTab("home"); toast("Tutti i dati sono stati cancellati");
 };
 
 /* ================= SPESE MIE ================= */
@@ -1170,8 +1178,8 @@ function toDocs(){
   return d;
 }
 function fromDocs(d){
-  const theme=S.settings.theme;
-  try{ if(d.settings) S.settings=Object.assign({},DEFAULT.settings,JSON.parse(d.settings),{theme}); }catch(e){}
+  const theme=S.settings.theme, me=S.settings.me;
+  try{ if(d.settings) S.settings=Object.assign({},DEFAULT.settings,JSON.parse(d.settings),{theme,me}); }catch(e){}
   try{ S.routes=d.routes?JSON.parse(d.routes):[]; }catch(e){ S.routes=[]; }
   S.trips=[]; S.expenses=[];
   Object.keys(d).forEach(k=>{ try{ if(k.startsWith("t_")) S.trips.push(JSON.parse(d[k])); else if(k.startsWith("e_")) S.expenses.push(JSON.parse(d[k])); }catch(e){} });
