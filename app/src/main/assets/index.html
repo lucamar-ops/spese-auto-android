@@ -966,7 +966,7 @@ function calcMine(r0,r1){
   const o=odoKm(r0,r1), sh=sharedIn(r0,r1), rate=o.rate;
   const totKm=o.km, myKm=Math.max(0,totKm-sh.km);
   const fuelShared=sh.fuel/2, fuelMine=myKm*rate, wearShared=sh.wear/2, wearMine=myKm*o.wear;
-  // Telepass: per ogni fattura, parte "fatti miei" = fattura − pedaggi condivisi pagati da Luca nel periodo; ripartita per giorni
+  // Telepass: per ogni fattura, parte "miei viaggi" = fattura − pedaggi condivisi pagati da Luca nel periodo; ripartita per giorni
   let bill=0, billSharedL=0, tollMine=0, billCov=0;
   S.mine.bills.forEach(b=>{
     const b0=dms(b.from), b1=dms(b.to)+DAY, ov=overlapDays(b0,b1,r0,r1); if(!ov) return;
@@ -1002,20 +1002,20 @@ function renderMine(){
       <button id="mCost"><div class="bubble">${ic("wallet")}</div>Altra spesa</button></div>`;
   // benzina
   const fb=c.fuel>0?`<div class="bar2"><i class="a" style="width:${pc(c.fuelShared,c.fuel)}%"></i><i class="b" style="width:${pc(c.fuelMine,c.fuel)}%"></i></div>
-     <div class="legend"><span><i style="background:var(--giada)"></i>Con Giada</span><span><i style="background:#0E7490"></i>Per fatti miei</span></div>`:"";
-  h+=accHTML("fuel","c-fuel","Benzina", noOdo&&odoN<2?"Inserisci i km del contachilometri":"Con Giada e per fatti tuoi", eur(c.fuel),
-     fb+ln("Viaggi con Giada (tua metà)",eur(c.fuelShared))+ln("Per fatti miei",eur(c.fuelMine))
+     <div class="legend"><span><i style="background:var(--giada)"></i>Con Giada</span><span><i style="background:#0E7490"></i>Miei viaggi</span></div>`:"";
+  h+=accHTML("fuel","c-fuel","Benzina", noOdo&&odoN<2?"Inserisci i km del contachilometri":"Viaggi con Giada e tuoi viaggi", eur(c.fuel),
+     fb+ln("Viaggi con Giada (tua metà)",eur(c.fuelShared))+ln("Miei viaggi",eur(c.fuelMine))
      +ln(`${kmf(c.myKm)} × ${rate(c.fuelRate)}`,"","muted")
-     +(noOdo?`<div class="warn">${odoN<2?"Servono almeno due letture del contachilometri: la prima fa da punto di partenza.":"Il periodo non è coperto del tutto dalle letture del contachilometri: la parte per fatti tuoi è parziale."}</div>`:""));
+     +(noOdo?`<div class="warn">${odoN<2?"Servono almeno due letture del contachilometri: la prima fa da punto di partenza.":"Il periodo non è coperto del tutto dalle letture del contachilometri: la parte dei tuoi viaggi è parziale."}</div>`:""));
   // telepass
   h+=accHTML("toll","c-toll","Telepass", noBill?(c.bill>0?"Fattura parziale per il periodo":"Fattura non ancora inserita"):(isY?"Fatture meno i viaggi con Giada":"Fattura meno i viaggi con Giada"), eur(c.toll),
      ln("Fattura (pedaggi e parcheggi)",c.bill>0?eur(c.bill):"—")+ln("− Viaggi con Giada sulla fattura",c.bill>0?eur(-c.billSharedL):"—")
-     +ln("= Per fatti miei",eur(c.tollMine),"tot")+ln("+ Tua metà dei viaggi con Giada",eur(c.tollShared))
+     +ln("= Miei viaggi",eur(c.tollMine),"tot")+ln("+ Tua metà dei viaggi con Giada",eur(c.tollShared))
      +ln("Totale a tuo carico",eur(c.toll),"tot")
      +(noBill?`<div class="warn">${c.bill>0?"La fattura copre solo parte del periodo.":"Senza fattura conto solo la tua metà dei viaggi con Giada."}</div>`:""));
   // km
   let kmBody=(c.totKm>0?`<div class="bar2"><i class="a" style="width:${pc(Math.min(c.sharedKm,c.totKm),c.totKm)}%"></i><i class="b" style="width:${pc(c.myKm,c.totKm)}%"></i></div>`:"")
-     +ln("Con Giada",kmf(c.sharedKm))+ln("Per fatti miei",kmf(c.myKm))+ln("Totale contachilometri",kmf(c.totKm),"tot");
+     +ln("Con Giada",kmf(c.sharedKm))+ln("Miei viaggi",kmf(c.myKm))+ln("Totale contachilometri",kmf(c.totKm),"tot");
   if(c.sharedKm>c.totKm+0.5 && !noOdo) kmBody+=`<div class="warn">I km dei viaggi con Giada superano quelli del contachilometri: controlla le letture.</div>`;
   if(isY){
     const rows=[...Array(12)].map((_,i)=>{ const ym=mineY+"-"+String(i+1).padStart(2,"0"), [a,b]=ymRange(ym), x=calcMine(a,b);
@@ -1025,9 +1025,9 @@ function renderMine(){
   h+=accHTML("gauge","c-km",isY?"Km dell'anno":"Km del mese", isY?"Dettaglio mese per mese":"Contachilometri", kmf(c.totKm), kmBody);
   // usura
   const wb=c.wear>0?`<div class="bar2"><i class="a" style="width:${pc(c.wearShared,c.wear)}%"></i><i class="b" style="width:${pc(c.wearMine,c.wear)}%"></i></div>
-     <div class="legend"><span><i style="background:var(--giada)"></i>Con Giada</span><span><i style="background:#0E7490"></i>Per fatti miei</span></div>`:"";
+     <div class="legend"><span><i style="background:var(--giada)"></i>Con Giada</span><span><i style="background:#0E7490"></i>Miei viaggi</span></div>`:"";
   h+=accHTML("wrench","c-wear","Usura", "Tagliandi, freni e manutenzione a km", eur(c.wear),
-     wb+ln("Viaggi con Giada (tua metà)",eur(c.wearShared))+ln("Per fatti miei",eur(c.wearMine))
+     wb+ln("Viaggi con Giada (tua metà)",eur(c.wearShared))+ln("Miei viaggi",eur(c.wearMine))
      +ln(`${kmf(c.myKm)} × ${rate(c.wearRate)}`,"","muted"));
   // altre spese
   const byCat={}; c.costs.forEach(x=>byCat[x.cat]=(byCat[x.cat]||0)+x.amount);
@@ -1046,7 +1046,7 @@ function renderMine(){
        + `</div>`;
     }
   }
-  h+=`<p class="note">Benzina e usura per fatti tuoi sono calcolate con le tariffe in vigore quando hai inserito ogni lettura: se cambi una tariffa, vale dalle letture successive. Nei viaggi con Giada conta solo la tua metà.</p>`;
+  h+=`<p class="note">Benzina e usura dei tuoi viaggi sono calcolate con le tariffe in vigore quando hai inserito ogni lettura: se cambi una tariffa, vale dalle letture successive. Nei viaggi con Giada conta solo la tua metà.</p>`;
   v.innerHTML=h;
   if(!isY){ v.querySelector("#mOdo").onclick=()=>openOdoSheet(); v.querySelector("#mBill").onclick=()=>openBillSheet(); v.querySelector("#mCost").onclick=()=>openCostSheet(); }
 }
@@ -1102,7 +1102,7 @@ function openBillSheet(b){
     f.value=b?b.from:mineYM+"-01"; t.value=b?b.to:lastDay(mineYM); if(b) a.value=dec(b.amount);
     const upd=()=>{ const v=num(a.value); if(!f.value||!t.value||t.value<f.value){ pv.classList.add("hidden"); return; }
       const sh2=sharedIn(dms(f.value),dms(t.value)+DAY); pv.classList.remove("hidden");
-      pv.innerHTML=`<div class="muted" style="font-size:13px">Viaggi con Giada pagati con il tuo Telepass nel periodo: ${eur(sh2.tpL)}</div><div class="big num">${eur(v-sh2.tpL)}</div><div class="det">per fatti tuoi</div>`; };
+      pv.innerHTML=`<div class="muted" style="font-size:13px">Viaggi con Giada pagati con il tuo Telepass nel periodo: ${eur(sh2.tpL)}</div><div class="big num">${eur(v-sh2.tpL)}</div><div class="det">per i tuoi viaggi</div>`; };
     [a,f,t].forEach(x=>x.addEventListener("input",upd)); upd();
     if(!b) setTimeout(()=>a.focus(),300);
     sh.querySelector("#bSave").onclick=()=>{
