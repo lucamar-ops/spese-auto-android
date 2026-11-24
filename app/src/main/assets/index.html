@@ -946,14 +946,14 @@ const overlapDays=(a0,a1,b0,b1)=>Math.max(0,(Math.min(a1,b1)-Math.max(a0,b0))/DA
 const odoSorted=()=>[...S.mine.odo].sort((a,b)=>a.date.localeCompare(b.date)||a.km-b.km);
 // km dal contachilometri ripartiti per giorni tra due letture
 function odoKm(r0,r1){
-  const o=odoSorted(); let km=0, cov=0;
+  const o=odoSorted(); let km=0, cov=0, cost=0;
   for(let i=1;i<o.length;i++){
     const a=dms(o[i-1].date)+DAY, b=dms(o[i].date)+DAY, d=o[i].km-o[i-1].km; // giorni (a-1, b-1]
     if(b<=a||d<0) continue;
     const ov=overlapDays(a,b,r0,r1); if(!ov) continue;
-    km+=d*ov/((b-a)/DAY); cov+=ov;
+    const k=d*ov/((b-a)/DAY); km+=k; cov+=ov; cost+=k*(o[i].rate!=null?o[i].rate:S.settings.fuel);
   }
-  return {km, cov, days:(r1-r0)/DAY};
+  return {km, cov, days:(r1-r0)/DAY, rate: km>0? cost/km : S.settings.fuel};
 }
 function sharedIn(r0,r1){
   const inR=d=>{ const t=dms(d); return t>=r0&&t<r1; };
@@ -962,7 +962,7 @@ function sharedIn(r0,r1){
            tpL:tolls.filter(e=>e.payer==="L").reduce((s,e)=>s+e.amount,0), tpG:tolls.filter(e=>e.payer==="G").reduce((s,e)=>s+e.amount,0) };
 }
 function calcMine(r0,r1){
-  const o=odoKm(r0,r1), sh=sharedIn(r0,r1), rate=S.settings.fuel;
+  const o=odoKm(r0,r1), sh=sharedIn(r0,r1), rate=o.rate;
   const totKm=o.km, myKm=Math.max(0,totKm-sh.km);
   const fuelShared=sh.fuel/2, fuelMine=myKm*rate;
   // Telepass: per ogni fattura, parte "fatti miei" = fattura − pedaggi condivisi pagati da Luca nel periodo; ripartita per giorni
@@ -976,7 +976,7 @@ function calcMine(r0,r1){
   const costs=S.mine.costs.filter(c=>{ const t=dms(c.date); return t>=r0&&t<r1; });
   const other=costs.reduce((s,c)=>s+c.amount,0);
   const days=(r1-r0)/DAY;
-  return {totKm, sharedKm:sh.km, myKm, odoCov:o.cov/days, fuelShared, fuelMine, fuel:fuelShared+fuelMine,
+  return {fuelRate:rate, totKm, sharedKm:sh.km, myKm, odoCov:o.cov/days, fuelShared, fuelMine, fuel:fuelShared+fuelMine,
           bill, billSharedL, tollMine, tollShared, toll:tollMine+tollShared, billCov:billCov/days,
           costs, other, total:fuelShared+fuelMine+tollMine+tollShared+other};
 }
@@ -994,7 +994,7 @@ function renderMine(){
   const odoN=S.mine.odo.length;
   const pc=(a,b)=>b>0?Math.round(a/b*100):0;
   let h=`<div class="hero mine"><div class="lbl">${lbl} · a tuo carico</div><div class="amt num">${eur(c.total)}</div>
-    <div class="stats"><span class="pill num">${kmf(c.totKm)}</span>${c.totKm>0?`<span class="pill num">${(c.total/c.totKm).toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2})} €/km</span>`:""}</div></div>`;
+    <div class="stats"><span class="pill num">${kmf(c.totKm)}</span></div></div>`;
   if(!isY) h+=`<div class="qa">
       <button id="mOdo"><div class="bubble">${ic("gauge")}</div>Km di fine mese</button>
       <button id="mBill"><div class="bubble">${ic("receipt")}</div>Fattura Telepass</button>
@@ -1004,7 +1004,7 @@ function renderMine(){
      <div class="legend"><span><i style="background:var(--giada)"></i>Con Giada</span><span><i style="background:#0E7490"></i>Per fatti miei</span></div>`:"";
   h+=accHTML("fuel","c-fuel","Benzina", noOdo&&odoN<2?"Inserisci i km del contachilometri":"Con Giada e per fatti tuoi", eur(c.fuel),
      fb+ln("Viaggi con Giada (tua metà)",eur(c.fuelShared))+ln("Per fatti miei",eur(c.fuelMine))
-     +ln(`${kmf(c.myKm)} × ${rate(S.settings.fuel)}`,"","muted")
+     +ln(`${kmf(c.myKm)} × ${rate(c.fuelRate)}`,"","muted")
      +(noOdo?`<div class="warn">${odoN<2?"Servono almeno due letture del contachilometri: la prima fa da punto di partenza.":"Il periodo non è coperto del tutto dalle letture del contachilometri: la parte per fatti tuoi è parziale."}</div>`:""));
   // telepass
   h+=accHTML("toll","c-toll","Telepass", noBill?(c.bill>0?"Fattura parziale per il periodo":"Fattura non ancora inserita"):(isY?"Fatture meno i viaggi con Giada":"Fattura meno i viaggi con Giada"), eur(c.toll),
@@ -1039,7 +1039,7 @@ function renderMine(){
        + `</div>`;
     }
   }
-  h+=`<p class="note">Benzina calcolata a km con la tariffa attuale (${rate(S.settings.fuel)}). Nei viaggi con Giada conta solo la tua metà; l'usura non è inclusa.</p>`;
+  h+=`<p class="note">Benzina per fatti tuoi calcolata con la tariffa in vigore quando hai inserito ogni lettura: se cambi la tariffa vale dalle letture successive. Nei viaggi con Giada conta solo la tua metà; l'usura non è inclusa.</p>`;
   v.innerHTML=h;
   if(!isY){ v.querySelector("#mOdo").onclick=()=>openOdoSheet(); v.querySelector("#mBill").onclick=()=>openBillSheet(); v.querySelector("#mCost").onclick=()=>openCostSheet(); }
 }
@@ -1076,7 +1076,7 @@ function openOdoSheet(o){
       if(before&&v<before.km){ toast(`Valore più basso della lettura del ${fmtShort(before.date)} (${Math.round(before.km).toLocaleString("it-IT")} km).`); return; }
       if(after&&v>after.km){ toast(`Valore più alto della lettura del ${fmtShort(after.date)}.`); return; }
       const snap=snapshot();
-      if(o) Object.assign(o,{km:v,date}); else S.mine.odo.push({id:uid(),km:v,date});
+      if(o) Object.assign(o,{km:v,date}); else S.mine.odo.push({id:uid(),km:v,date,rate:S.settings.fuel});
       save(); closeSheet(); renderMine(); toast("Lettura salvata",()=>{ restore(snap); renderMine(); });
     };
     bindDel(sh,o,"odo","la lettura");
@@ -1242,6 +1242,7 @@ function renderSync(){
 
 /* ================= boot ================= */
 function renderAll(){ renderHome(); renderMonth(); renderSettings(); renderSync(); renderMine(); if(!$("#sumYear").classList.contains("hidden")) renderYear(); }
+if(S.mine.odo.some(o=>o.rate==null)){ S.mine.odo.forEach(o=>{ if(o.rate==null) o.rate=S.settings.fuel; }); saveLocal(); }
 hydrateIcons(); bindSeg(document);
 applyTheme();
 try{ matchMedia("(prefers-color-scheme: dark)").addEventListener("change",applyTheme); }catch(e){}
