@@ -107,6 +107,7 @@ button{font:inherit;border:0;cursor:pointer;color:inherit;background:none}
 .item .tx span{font-size:12.5px;color:var(--muted);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .item .am{font-weight:700;white-space:nowrap}
 .tag{font-size:11px;padding:2px 8px;border-radius:99px;font-weight:650}
+.tag.S{background:transparent;color:var(--giada);box-shadow:inset 0 0 0 1px var(--giada)}
 .tag.L{background:var(--luca-soft);color:var(--luca)} .tag.G{background:var(--giada-soft);color:var(--giada)}
 
 /* month nav */
@@ -533,17 +534,17 @@ async function drivingKm(a,b){
 
 /* ================= data ops ================= */
 function tollOf(tripId){ return S.expenses.find(e=>e.tripId===tripId); }
-function addTrip({date,name,km,toll,routeId}){
-  const t={id:uid(),date,name,km:r2(km),fuel:S.settings.fuel,wear:S.settings.wear,routeId:routeId||null};
+function addTrip({date,name,km,toll,routeId,soloG}){
+  const t={id:uid(),date,name,km:r2(km),fuel:S.settings.fuel,wear:S.settings.wear,routeId:routeId||null,soloG:!!soloG};
   S.trips.push(t);
-  if(toll>0) S.expenses.push({id:uid(),date,type:"telepass",amount:r2(toll),payer:S.settings.tollPayer,note:name,tripId:t.id});
+  if(toll>0) S.expenses.push({id:uid(),date,type:"telepass",amount:r2(toll),payer:S.settings.tollPayer,note:name,tripId:t.id,soloG:!!soloG});
   save(); return t;
 }
-function updateTrip(id,{date,name,km,toll,tollPayer}){
+function updateTrip(id,{date,name,km,toll,tollPayer,soloG}){
   const t=S.trips.find(x=>x.id===id); if(!t) return;
-  Object.assign(t,{date,name,km:r2(km)});
+  Object.assign(t,{date,name,km:r2(km),soloG:!!soloG});
   let e=tollOf(id);
-  if(toll>0){ if(!e){ e={id:uid(),type:"telepass",tripId:id}; S.expenses.push(e); } Object.assign(e,{date,amount:r2(toll),payer:tollPayer,note:name}); }
+  if(toll>0){ if(!e){ e={id:uid(),type:"telepass",tripId:id}; S.expenses.push(e); } Object.assign(e,{date,amount:r2(toll),payer:tollPayer,note:name,soloG:!!soloG}); }
   else if(e){ S.expenses=S.expenses.filter(x=>x!==e); }
   save();
 }
@@ -559,8 +560,14 @@ function calcPeriod(prefix){
   const km=trips.reduce((s,t)=>s+t.km,0), fuel=trips.reduce((s,t)=>s+t.km*t.fuel,0), wear=trips.reduce((s,t)=>s+t.km*t.wear,0);
   const sum=(ty,p)=>exps.filter(e=>e.type===ty&&e.payer===p).reduce((s,e)=>s+e.amount,0);
   const tpL=sum("telepass","L"), tpG=sum("telepass","G"), bzL=sum("benzina","L"), bzG=sum("benzina","G");
-  const car=fuel+wear, total=car+tpL+tpG, half=total/2, paidG=tpG+bzG, balance=half-paidG;
-  return {trips,exps,km,fuel,wear,car,tpL,tpG,bzL,bzG,total,half,paidG,balance};
+  const solo=trips.filter(t=>t.soloG), kmG=solo.reduce((s,t)=>s+t.km,0);
+  const fuelG=solo.reduce((s,t)=>s+t.km*t.fuel,0), wearG=solo.reduce((s,t)=>s+t.km*t.wear,0);
+  const tpSolo=exps.filter(e=>e.type==="telepass"&&e.soloG).reduce((s,e)=>s+e.amount,0);
+  const fuelS=fuel-fuelG, wearS=wear-wearG, tpS=tpL+tpG-tpSolo;
+  const qFuel=fuelS/2+fuelG, qWear=wearS/2+wearG, qToll=tpS/2+tpSolo;
+  const car=fuel+wear, total=car+tpL+tpG, half=qFuel+qWear+qToll, paidG=tpG+bzG, balance=half-paidG;
+  const hasSolo=kmG>0||tpSolo>0;
+  return {trips,exps,km,fuel,wear,car,tpL,tpG,bzL,bzG,total,half,paidG,balance,kmG,fuelG,wearG,tpSolo,fuelS,wearS,tpS,qFuel,qWear,qToll,hasSolo};
 }
 
 /* ================= state ================= */
@@ -656,6 +663,7 @@ function openTripSheet(){
       <div class="field"><label>Telepass</label><div class="suffix"><input id="tToll" inputmode="decimal" placeholder="0"><i>€</i></div></div>
     </div>
     <label class="switch">Andata e ritorno <input type="checkbox" id="tAR"></label>
+    <label class="switch"><span>Viaggio solo di Giada<br><small class="muted" style="font-weight:400;font-size:12.5px">Benzina, usura e Telepass tutti a suo carico</small></span><input type="checkbox" id="tSoloG"></label>
     <div class="field"><label>Nome</label><input id="tName" placeholder="es. Milano → Brescia"></div>
     <div class="field"><label>Data</label><input type="date" id="tDate"></div>
     <div id="tPrev" class="calc-box hidden"></div>
@@ -671,13 +679,13 @@ function openTripSheet(){
       const k=num(km.value), tl=num(toll.value), a=ar.checked;
       let name=nm.value.trim() || (f.value&&t.value? `${shortName(f)} → ${shortName(t)}` : "Viaggio");
       if(a && !/\(A\/R\)$/.test(name)) name+=" (A/R)";
-      return {km:a?k*2:k, toll:a?tl*2:tl, name, date:dt.value||today()};
+      return {km:a?k*2:k, toll:a?tl*2:tl, name, date:dt.value||today(), soloG:sh.querySelector("#tSoloG").checked};
     };
     const preview=()=>{
       const v=vals(); if(v.km<=0){ prev.classList.add("hidden"); return; }
       const fu=v.km*S.settings.fuel, we=v.km*S.settings.wear, tot=fu+we+v.toll;
       prev.classList.remove("hidden");
-      prev.innerHTML=`<div class="muted" style="font-size:13px">${kmf(v.km)} · quota Giada ${eur(tot/2)}</div><div class="big num">${eur(tot)}</div><div class="det num">Benzina ${eur(fu)} · Usura ${eur(we)}${v.toll>0?" · Telepass "+eur(v.toll):""}</div>`;
+      prev.innerHTML=`<div class="muted" style="font-size:13px">${kmf(v.km)} · ${v.soloG?"tutto a carico di Giada":"quota Giada "+eur(tot/2)}</div><div class="big num">${eur(tot)}</div><div class="det num">Benzina ${eur(fu)} · Usura ${eur(we)}${v.toll>0?" · Telepass "+eur(v.toll):""}</div>`;
     };
     const status=(html,err)=>{ st.classList.remove("hidden"); st.classList.toggle("err",!!err); st.innerHTML=html; };
     const fillName=()=>{ if(autoName && f.value && t.value){ nm.value=`${shortName(f)} → ${shortName(t)}`; } };
@@ -698,8 +706,8 @@ function openTripSheet(){
     attachAutocomplete(f,maybeAuto); attachAutocomplete(t,maybeAuto);
     sh.querySelector("#tSwap").onclick=()=>{ [f.value,t.value]=[t.value,f.value]; [f._place,t._place]=[t._place,f._place]; if(autoName) nm.value=""; fillName(); preview(); };
     sh.querySelector("#tCalc").onclick=calc;
-    sh.querySelector("#tReset").onclick=()=>{ [f,t,km,toll,nm].forEach(i=>{ i.value=""; i._place=null; }); ar.checked=false; autoName=true; st.classList.add("hidden"); preview(); f.focus(); };
-    [km,toll,ar,nm,f,t].forEach(i=>i.addEventListener("input",preview)); ar.addEventListener("change",preview);
+    sh.querySelector("#tReset").onclick=()=>{ [f,t,km,toll,nm].forEach(i=>{ i.value=""; i._place=null; }); ar.checked=false; sh.querySelector("#tSoloG").checked=false; autoName=true; st.classList.add("hidden"); preview(); f.focus(); };
+    [km,toll,ar,nm,f,t].forEach(i=>i.addEventListener("input",preview)); ar.addEventListener("change",preview); sh.querySelector("#tSoloG").addEventListener("change",preview);
     sh.querySelector("#tAdd").onclick=()=>{
       const v=vals(); if(v.km<=0){ status("Inserisci i km oppure calcolali.",true); return; }
       const snap=snapshot(); addTrip(v); closeSheet();
@@ -721,16 +729,21 @@ function openExpSheet(exp){
     <div class="field"><label>Importo</label><div class="suffix"><input id="eAmt" inputmode="decimal" placeholder="0,00" style="font-size:22px;font-weight:700"><i>€</i></div></div>
     <div class="field"><label>Pagata da</label><div class="seg who" id="ePayer"><button data-v="L">Luca</button><button data-v="G">Giada</button></div></div>
     <div class="row"><div class="field"><label>Data</label><input type="date" id="eDate"></div></div>
+    <label class="switch" id="eSoloRow" style="margin-top:-6px"><span>Spesa solo di Giada<br><small class="muted" style="font-weight:400;font-size:12.5px">Il Telepass è tutto a suo carico</small></span><input type="checkbox" id="eSoloG"></label>
     <div class="field"><label>Nota (facoltativa)</label><input id="eNote" placeholder="es. distributore A4"></div>
     <div class="btn-row">${exp?`<button class="btn danger-soft" id="eDel" style="flex:0 0 auto">${ic("trash")}</button>`:""}<button class="btn" id="eSave">${ic("check")}${exp?"Salva modifiche":"Aggiungi spesa"}</button></div>
     ${exp?"":`<button class="btn plain block" id="eQuick" style="margin-top:10px">${ic("star")}Salva come spesa rapida</button>`}
   `, sh=>{
     segSet(sh.querySelector("#eType"),e.type); segSet(sh.querySelector("#ePayer"),e.payer);
+    sh.querySelector("#eSoloG").checked=!!e.soloG;
+    const soloRow=()=>sh.querySelector("#eSoloRow").classList.toggle("hidden",segGet(sh.querySelector("#eType"))!=="telepass");
+    sh.querySelector("#eType").addEventListener("change",soloRow); soloRow();
     sh.querySelector("#eAmt").value=e.amount===""?"":dec(e.amount); sh.querySelector("#eDate").value=e.date; sh.querySelector("#eNote").value=e.note||"";
     if(!exp) setTimeout(()=>sh.querySelector("#eAmt").focus(),300);
     sh.querySelector("#eSave").onclick=()=>{
       const amount=num(sh.querySelector("#eAmt").value); if(amount<=0){ toast("Inserisci l'importo."); return; }
-      const v={type:segGet(sh.querySelector("#eType")),payer:segGet(sh.querySelector("#ePayer")),amount:r2(amount),date:sh.querySelector("#eDate").value||today(),note:sh.querySelector("#eNote").value.trim()};
+      const ty=segGet(sh.querySelector("#eType"));
+      const v={type:ty,payer:segGet(sh.querySelector("#ePayer")),amount:r2(amount),date:sh.querySelector("#eDate").value||today(),note:sh.querySelector("#eNote").value.trim(),soloG:ty==="telepass"&&sh.querySelector("#eSoloG").checked};
       const snap=snapshot();
       if(exp){ Object.assign(S.expenses.find(x=>x.id===exp.id),v); save(); toast("Spesa aggiornata",()=>restore(snap)); }
       else { addExpense(v); toast(`Aggiunta: ${v.type==="benzina"?"Benzina":"Telepass"} ${eur(v.amount)} (${who(v.payer)})`,()=>restore(snap)); }
@@ -754,15 +767,16 @@ function openEditTrip(trip){
     </div>
     <div class="field"><label>Telepass</label><div class="suffix"><input id="xToll" inputmode="decimal" placeholder="0"><i>€</i></div></div>
     <div class="field"><label>Telepass pagato da</label><div class="seg who" id="xPayer"><button data-v="L">Luca</button><button data-v="G">Giada</button></div></div>
+    <label class="switch" style="margin-top:-6px"><span>Viaggio solo di Giada<br><small class="muted" style="font-weight:400;font-size:12.5px">Benzina, usura e Telepass tutti a suo carico</small></span><input type="checkbox" id="xSoloG"></label>
     <p class="note" style="margin:-4px 2px 14px">Tariffa di questo viaggio: ${rate(trip.fuel+trip.wear)} (benzina ${rate(trip.fuel)} + usura ${rate(trip.wear)}).</p>
     <div class="btn-row"><button class="btn danger-soft" id="xDel" style="flex:0 0 auto">${ic("trash")}</button><button class="btn" id="xSave">${ic("check")}Salva modifiche</button></div>
   `, sh=>{
     sh.querySelector("#xName").value=trip.name; sh.querySelector("#xKm").value=dec(trip.km); sh.querySelector("#xDate").value=trip.date;
-    sh.querySelector("#xToll").value=tl?dec(tl.amount):""; segSet(sh.querySelector("#xPayer"), tl?tl.payer:S.settings.tollPayer);
+    sh.querySelector("#xToll").value=tl?dec(tl.amount):""; segSet(sh.querySelector("#xPayer"), tl?tl.payer:S.settings.tollPayer); sh.querySelector("#xSoloG").checked=!!trip.soloG;
     sh.querySelector("#xSave").onclick=()=>{
       const km=num(sh.querySelector("#xKm").value); if(km<=0){ toast("Inserisci i km."); return; }
       const snap=snapshot();
-      updateTrip(trip.id,{name:sh.querySelector("#xName").value.trim()||"Viaggio",km,date:sh.querySelector("#xDate").value||trip.date,toll:num(sh.querySelector("#xToll").value),tollPayer:segGet(sh.querySelector("#xPayer"))});
+      updateTrip(trip.id,{name:sh.querySelector("#xName").value.trim()||"Viaggio",km,date:sh.querySelector("#xDate").value||trip.date,toll:num(sh.querySelector("#xToll").value),tollPayer:segGet(sh.querySelector("#xPayer")),soloG:sh.querySelector("#xSoloG").checked});
       closeSheet(); renderAll(); toast("Viaggio aggiornato",()=>restore(snap));
     };
     sh.querySelector("#xDel").onclick=async()=>{ if(await ask("Eliminare il viaggio?","Viene eliminato anche il suo Telepass. L'operazione si può annullare subito dopo.","Elimina",true)){ const snap=snapshot(); deleteTrip(trip.id); closeSheet(); renderAll(); toast("Viaggio eliminato",()=>restore(snap)); } };
@@ -778,8 +792,8 @@ function renderList(){
   const byDay={}; rows.forEach(r=>(byDay[r.date]=byDay[r.date]||[]).push(r));
   $("#list").innerHTML=Object.keys(byDay).map(d=>`<div class="day">${fmtDay(d)}</div><div class="group">`+byDay[d].map(({k,o})=>{
     if(k==="t"){ const tl=tollOf(o.id), cost=o.km*(o.fuel+o.wear)+(tl?tl.amount:0);
-      return `<button class="item" data-t="${o.id}"><div class="ic">${ic("car")}</div><div class="tx"><b>${esc(o.name)}</b><span class="num">${kmf(o.km)}${tl?` · Telepass ${eur(tl.amount)} <i class="tag ${tl.payer}" style="font-style:normal">${who(tl.payer)}</i>`:""}</span></div><div class="am num">${eur(cost)}</div></button>`; }
-    return `<button class="item" data-e="${o.id}"><div class="ic ${o.type==="benzina"?"fuel":"toll"}">${ic(o.type==="benzina"?"fuel":"toll")}</div><div class="tx"><b>${o.type==="benzina"?"Benzina":"Telepass"}${o.note?" · "+esc(o.note):""}</b><span><i class="tag ${o.payer}" style="font-style:normal">${who(o.payer)}</i></span></div><div class="am num">${eur(o.amount)}</div></button>`;
+      return `<button class="item" data-t="${o.id}"><div class="ic">${ic("car")}</div><div class="tx"><b>${esc(o.name)}</b><span class="num">${o.soloG?`<i class="tag S" style="font-style:normal">Solo Giada</i> `:""}${kmf(o.km)}${tl?` · Telepass ${eur(tl.amount)} <i class="tag ${tl.payer}" style="font-style:normal">${who(tl.payer)}</i>`:""}</span></div><div class="am num">${eur(cost)}</div></button>`; }
+    return `<button class="item" data-e="${o.id}"><div class="ic ${o.type==="benzina"?"fuel":"toll"}">${ic(o.type==="benzina"?"fuel":"toll")}</div><div class="tx"><b>${o.type==="benzina"?"Benzina":"Telepass"}${o.note?" · "+esc(o.note):""}</b><span><i class="tag ${o.payer}" style="font-style:normal">${who(o.payer)}</i>${o.soloG?` <i class="tag S" style="font-style:normal">Solo Giada</i>`:""}</span></div><div class="am num">${eur(o.amount)}</div></button>`;
   }).join("")+`</div>`).join("") + `<p class="note" style="text-align:center">Tocca un movimento per modificarlo o eliminarlo</p>`;
 }
 $("#list").addEventListener("click",e=>{
@@ -793,7 +807,8 @@ function summaryText(c, ym){
   const aF=c.km?c.fuel/c.km:S.settings.fuel, aW=c.km?c.wear/c.km:S.settings.wear;
   let s=`🚗 Spese auto – ${monthLabel(ym)}\n\nKm: ${kmf(c.km)} (${c.trips.length} viaggi)\n`;
   s+=`• Benzina: ${kmf(c.km)} × ${rate(aF)} = ${eur(c.fuel)}\n• Usura: ${kmf(c.km)} × ${rate(aW)} = ${eur(c.wear)}\n• Telepass: ${eur(c.tpL+c.tpG)}\n`;
-  s+=`Totale ${eur(c.total)} → metà ${eur(c.half)}\n`;
+  if(c.hasSolo){ s+=`Totale ${eur(c.total)}\nQuota Giada: metà delle spese comuni ${eur(c.total/2-(c.fuelG+c.wearG+c.tpSolo)/2)} + spese solo sue ${eur(c.fuelG+c.wearG+c.tpSolo)} = ${eur(c.half)}\n`; }
+  else s+=`Totale ${eur(c.total)} → metà ${eur(c.half)}\n`;
   if(c.paidG>0) s+=`Già pagato da Giada: ${eur(c.paidG)}\n`;
   s+="\n"+(Math.abs(c.balance)<0.005?"Siete pari ✅": c.balance>0?`👉 Giada deve dare a Luca ${eur(c.balance)}`:`👉 Luca deve dare a Giada ${eur(-c.balance)}`);
   return s;
@@ -812,18 +827,19 @@ function renderMonth(){
     <tr><td>Telepass</td><td class="n">${eur(tp)}</td></tr>
     ${tp>0?`<tr class="sub"><td>Luca ${eur(c.tpL)} · Giada ${eur(c.tpG)}</td><td></td></tr>`:""}
     <tr class="tot"><td>Totale</td><td class="n">${eur(c.total)}</td></tr></table></div>
-  <div class="card"><div class="card-h"><h2>Quota di Giada</h2><span class="tag G">50%</span></div><table class="tbl">
-    <tr><td>Benzina</td><td class="n">${eur(c.fuel/2)}</td></tr>
-    <tr class="sub"><td>${kmf(c.km)} × ${rate(aF/2)}</td><td></td></tr>
-    <tr><td>Usura</td><td class="n">${eur(c.wear/2)}</td></tr>
-    <tr class="sub"><td>${kmf(c.km)} × ${rate(aW/2)}</td><td></td></tr>
-    <tr><td>Telepass</td><td class="n">${eur(tp/2)}</td></tr>
+  <div class="card"><div class="card-h"><h2>Quota di Giada</h2><span class="tag G">${c.hasSolo?"50% + solo sue":"50%"}</span></div><table class="tbl">
+    <tr><td>Benzina</td><td class="n">${eur(c.qFuel)}</td></tr>
+    ${c.fuelG>0?`<tr class="sub"><td>metà comuni ${eur(c.fuelS/2)} · solo Giada ${eur(c.fuelG)}</td><td></td></tr>`:`<tr class="sub"><td>${kmf(c.km)} × ${rate(aF/2)}</td><td></td></tr>`}
+    <tr><td>Usura</td><td class="n">${eur(c.qWear)}</td></tr>
+    ${c.wearG>0?`<tr class="sub"><td>metà comuni ${eur(c.wearS/2)} · solo Giada ${eur(c.wearG)}</td><td></td></tr>`:`<tr class="sub"><td>${kmf(c.km)} × ${rate(aW/2)}</td><td></td></tr>`}
+    <tr><td>Telepass</td><td class="n">${eur(c.qToll)}</td></tr>
+    ${c.tpSolo>0?`<tr class="sub"><td>metà comuni ${eur(c.tpS/2)} · solo Giada ${eur(c.tpSolo)}</td><td></td></tr>`:""}
     <tr class="tot"><td>Quota</td><td class="n">${eur(c.half)}</td></tr>
     ${c.tpG>0?`<tr class="minus"><td>Telepass già pagato</td><td class="n">${eur(-c.tpG)}</td></tr>`:""}
     ${c.bzG>0?`<tr class="minus"><td>Benzina già pagata</td><td class="n">${eur(-c.bzG)}</td></tr>`:""}
     <tr class="tot"><td>${Math.abs(b)<0.005?"Saldo":b>0?"Da dare a Luca":"Luca restituisce"}</td><td class="n">${eur(Math.abs(b))}</td></tr></table>
     ${c.bzL>0?`<p class="note">Rifornimenti di Luca nel mese: ${eur(c.bzL)}. Sono già compresi nel costo benzina al km e non cambiano il saldo.</p>`:""}
-    <p class="note">Se fa benzina Giada, l'importo viene scalato dalla sua quota.</p></div>
+    <p class="note">Se fa benzina Giada, l'importo viene scalato dalla sua quota.${c.hasSolo?` I viaggi e i Telepass segnati "solo Giada" sono interamente a suo carico.`:""}</p></div>
   <button class="btn block" id="btnShare">${ic("share")}Condividi con Giada</button>`;
   $("#btnShare").onclick=()=>{ const txt=summaryText(c,curYM); if(hasBridge) Android.share(txt); else if(navigator.share) navigator.share({text:txt}).catch(()=>{}); else navigator.clipboard.writeText(txt).then(()=>toast("Riepilogo copiato")); };
 }
@@ -959,7 +975,9 @@ function odoKm(r0,r1){
 function sharedIn(r0,r1){
   const inR=d=>{ const t=dms(d); return t>=r0&&t<r1; };
   const trips=S.trips.filter(t=>inR(t.date)), tolls=S.expenses.filter(e=>e.type==="telepass"&&inR(e.date));
-  return { km:trips.reduce((s,t)=>s+t.km,0), fuel:trips.reduce((s,t)=>s+t.km*t.fuel,0), wear:trips.reduce((s,t)=>s+t.km*t.wear,0),
+  const sht=trips.filter(t=>!t.soloG);
+  return { km:trips.reduce((s,t)=>s+t.km,0), fuel:sht.reduce((s,t)=>s+t.km*t.fuel,0), wear:sht.reduce((s,t)=>s+t.km*t.wear,0),
+           tS:tolls.filter(e=>!e.soloG).reduce((s,e)=>s+e.amount,0),
            tpL:tolls.filter(e=>e.payer==="L").reduce((s,e)=>s+e.amount,0), tpG:tolls.filter(e=>e.payer==="G").reduce((s,e)=>s+e.amount,0) };
 }
 function calcMine(r0,r1){
@@ -973,7 +991,7 @@ function calcMine(r0,r1){
     const f=ov/((b1-b0)/DAY), shB=sharedIn(b0,b1).tpL;
     bill+=b.amount*f; billSharedL+=shB*f; tollMine+=(b.amount-shB)*f; billCov+=ov;
   });
-  const tollShared=(sh.tpL+sh.tpG)/2;
+  const tollShared=sh.tS/2;
   const costs=S.mine.costs.filter(c=>{ const t=dms(c.date); return t>=r0&&t<r1; });
   const other=costs.reduce((s,c)=>s+c.amount,0);
   const days=(r1-r0)/DAY;
