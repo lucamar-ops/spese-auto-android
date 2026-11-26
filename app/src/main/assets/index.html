@@ -1187,7 +1187,7 @@ function openCostSheet(c){
     sh.querySelector("#cCat").addEventListener("click",()=>{ if(!c && (segGet(sp)==="1"||segGet(sp)==="12")){ segSet(sp,["bollo","assicurazione"].includes(cat)?"12":"1"); upd(); } });
     sh.querySelector("#cSave").onclick=()=>{
       const v=num(sh.querySelector("#cAmt").value); if(v<=0){ toast("Inserisci l'importo."); return; }
-      const snap=snapshot(), x={cat,amount:r2(v),date:sh.querySelector("#cDate").value||today(),note:sh.querySelector("#cNote").value.trim(),months:months()};
+      const snap=snapshot(), x={cat,amount:r2(v),date:sh.querySelector("#cDate").value||today(),note:sh.querySelector("#cNote").value.trim(),months:months(),monthsSet:true};
       if(c) Object.assign(c,x); else S.mine.costs.push(Object.assign({id:uid()},x));
       save(); closeSheet(); renderMine(); toast("Spesa salvata",()=>{ restore(snap); renderMine(); });
     };
@@ -1308,7 +1308,10 @@ function renderSync(){
 
 /* ================= boot ================= */
 function renderAll(){ renderHome(); renderMonth(); renderSettings(); renderSync(); renderMine(); if(!$("#sumYear").classList.contains("hidden")) renderYear(); }
-if(!S.mine.spreadMig){ S.mine.costs.forEach(c=>{ if(c.months==null && (c.cat==="bollo"||c.cat==="assicurazione")) c.months=12; }); S.mine.spreadMig=true; saveLocal(); }
+(()=>{ let ch=false; S.mine.costs.forEach(c=>{
+  if(c.cat==="assicurazione" && c.months==null){ c.months=12; ch=true; }
+  if(c.cat==="bollo" && c.date.startsWith("2026-11") && (c.months==null||c.months===12) && !c.monthsSet){ c.months=10; c.monthsSet=true; ch=true; } /* bollo nov 2026 → ago 2027 */
+}); if(ch) saveLocal(); })();
 if(S.mine.odo.some(o=>o.rate==null||o.wear==null)){ S.mine.odo.forEach(o=>{ if(o.rate==null) o.rate=S.settings.fuel; if(o.wear==null) o.wear=S.settings.wear; }); saveLocal(); }
 hydrateIcons(); bindSeg(document);
 applyTheme();
