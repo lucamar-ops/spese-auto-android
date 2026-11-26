@@ -10,8 +10,8 @@ android {
         applicationId "it.luca.speseauto"
         minSdk 24
         targetSdk 34
-        versionCode 11
-        versionName "11.0"
+        versionCode 12
+        versionName "12.0"
     }
 
     // Chiave fissa: così ogni nuova versione si installa sopra la vecchia senza perdere i dati

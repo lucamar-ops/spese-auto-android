@@ -1013,8 +1013,15 @@ function calcMine(r0,r1){
     bill+=b.amount*f; billSharedL+=shB*f; tollMine+=(b.amount-shB)*f; billCov+=ov;
   });
   const tollShared=sh.tS/2;
-  const costs=S.mine.costs.filter(c=>{ const t=dms(c.date); return t>=r0&&t<r1; });
-  const extraShared=sh.exS/2, other=costs.reduce((s,c)=>s+c.amount,0)+extraShared;
+  const costs=[];
+  S.mine.costs.forEach(c=>{
+    const n=Math.max(1,Math.round(c.months||1)), y=+c.date.slice(0,4), m=+c.date.slice(5,7)-1;
+    if(n===1){ const t=dms(c.date); if(t>=r0&&t<r1) costs.push({id:c.id,cat:c.cat,note:c.note,date:c.date,amt:c.amount,k:0,n:1}); return; }
+    let amt=0, k0=-1, cnt=0;
+    for(let k=0;k<n;k++){ const t=Date.UTC(y,m+k,1); if(t>=r0&&t<r1){ amt+=c.amount/n; cnt++; if(k0<0) k0=k; } }
+    if(cnt) costs.push({id:c.id,cat:c.cat,note:c.note,date:c.date,amt,k:k0,n,cnt});
+  });
+  const extraShared=sh.exS/2, other=costs.reduce((s,c)=>s+c.amt,0)+extraShared;
   const days=(r1-r0)/DAY;
   return {fuelRate:rate, wearRate:o.wear, wearShared, wearMine, wear:wearShared+wearMine, totKm, sharedKm:sh.km, myKm, odoCov:o.cov/days, fuelShared, fuelMine, fuel:fuelShared+fuelMine,
           bill, billSharedL, tollMine, tollShared, toll:tollMine+tollShared, billCov:billCov/days,
@@ -1069,11 +1076,11 @@ function renderMine(){
      wb+ln("Viaggi con Giada (tua metà)",eur(c.wearShared))+ln("Miei viaggi",eur(c.wearMine))
      +ln(`${kmf(c.myKm)} × ${rate(c.wearRate)}`,"","muted"));
   // altre spese
-  const byCat={}; c.costs.forEach(x=>byCat[x.cat]=(byCat[x.cat]||0)+x.amount);
+  const byCat={}; c.costs.forEach(x=>byCat[x.cat]=(byCat[x.cat]||0)+x.amt);
   const exLine = c.extraShared>0 ? ln("Spese extra con Giada (tua metà)",eur(c.extraShared)) : "";
   h+=accHTML("wallet","c-oth","Altre spese", c.costs.length? Object.keys(byCat).map(k=>COST_CATS[k][0]).join(", ")+(c.extraShared>0?", extra":"") : (c.extraShared>0?"Extra con Giada":"Bollo, assicurazione, interventi…"), eur(c.other),
      exLine + (c.costs.length? (isY? Object.keys(byCat).map(k=>ln(COST_CATS[k][0],eur(byCat[k]))).join("") :
-       c.costs.sort((a,b)=>a.date.localeCompare(b.date)).map(x=>`<div class="ln" data-cost="${x.id}" style="cursor:pointer"><span>${COST_CATS[x.cat][0]}${x.note?" · "+esc(x.note):""}<br><small class="muted">${fmtShort(x.date)}</small></span><span>${eur(x.amount)}</span></div>`).join(""))
+       c.costs.sort((a,b)=>a.date.localeCompare(b.date)).map(x=>`<div class="ln" data-cost="${x.id}" style="cursor:pointer"><span>${COST_CATS[x.cat][0]}${x.note?" · "+esc(x.note):""}<br><small class="muted">${x.n>1?`rata ${x.k+1} di ${x.n} · pagata il ${fmtShort(x.date)}`:fmtShort(x.date)}</small></span><span>${eur(x.amt)}</span></div>`).join(""))
      : (exLine?"":`<div class="ln muted"><span>Nessuna spesa ${isY?"nell'anno":"nel mese"}</span><span></span></div>`)));
   // inserimenti
   if(!isY){
@@ -1159,16 +1166,28 @@ function openCostSheet(c){
   openSheet(c?"Modifica spesa":"Altra spesa",`
     <div class="field"><label>Tipo</label><div class="routes" id="cCat" style="grid-template-columns:repeat(3,1fr);gap:8px">${Object.entries(COST_CATS).map(([k,[n,i]])=>`<button class="route" data-v="${k}" style="padding:10px;text-align:center"><div class="ico" style="margin:0 auto">${ic(i)}</div><b style="font-size:12.5px;margin:6px 0 0">${n}</b></button>`).join("")}</div></div>
     <div class="field"><label>Importo</label><div class="suffix"><input id="cAmt" inputmode="decimal" placeholder="0,00" style="font-size:22px;font-weight:700"><i>€</i></div></div>
-    <div class="field"><label>Data</label><input type="date" id="cDate"></div>
+    <div class="field"><label>Data del pagamento</label><input type="date" id="cDate"></div>
+    <div class="field"><label>Ripartisci</label><div class="seg" id="cSpread"><button data-v="1">Tutta nel mese</button><button data-v="12">12 mesi</button><button data-v="x">Altro</button></div></div>
+    <div class="field hidden" id="cMonthsRow"><label>Numero di mesi</label><div class="suffix"><input id="cMonths" inputmode="numeric" placeholder="es. 6"><i>mesi</i></div></div>
+    <div id="cSpreadInfo" class="note" style="margin:-6px 2px 14px"></div>
     <div class="field"><label>Nota (facoltativa)</label><input id="cNote" placeholder="es. tagliando 30.000 km"></div>
     <div class="btn-row">${delBtn(c)}<button class="btn" id="cSave">${ic("check")}Salva</button></div>`, sh=>{
     let cat=c?c.cat:"bollo";
     const paint=()=>sh.querySelectorAll("#cCat .route").forEach(x=>{ const on=x.dataset.v===cat; x.style.outline=on?"2px solid #0E7490":"none"; x.style.background=on?"var(--surface2)":""; });
     sh.querySelector("#cCat").addEventListener("click",e=>{ const x=e.target.closest("[data-v]"); if(x){ cat=x.dataset.v; paint(); } }); paint();
     sh.querySelector("#cDate").value=c?c.date:defDate(); if(c){ sh.querySelector("#cAmt").value=dec(c.amount); sh.querySelector("#cNote").value=c.note||""; }
+    const sp=sh.querySelector("#cSpread"), mr=sh.querySelector("#cMonthsRow"), mi=sh.querySelector("#cMonths"), info=sh.querySelector("#cSpreadInfo");
+    const n0 = c? (c.months||1) : (["bollo","assicurazione"].includes(cat)?12:1);
+    segSet(sp, n0===1?"1":n0===12?"12":"x"); if(n0!==1&&n0!==12) mi.value=String(n0);
+    const months=()=>{ const v=segGet(sp); return v==="x"? Math.max(1,Math.round(num(mi.value)||1)) : +v; };
+    const upd=()=>{ mr.classList.toggle("hidden",segGet(sp)!=="x"); const n=months(), a=num(sh.querySelector("#cAmt").value), d=sh.querySelector("#cDate").value||today();
+      if(n>1){ const y=+d.slice(0,4), m=+d.slice(5,7)-1, end=new Date(y,m+n-1,1).toLocaleDateString("it-IT",{month:"long",year:"numeric"}), st=new Date(y,m,1).toLocaleDateString("it-IT",{month:"long",year:"numeric"});
+        info.textContent = `${a>0?eur(a/n)+" al mese, ":""}da ${st} a ${end} (${n} mesi).`; } else info.textContent=""; };
+    sp.addEventListener("change",upd); [mi,sh.querySelector("#cAmt"),sh.querySelector("#cDate")].forEach(x=>x.addEventListener("input",upd)); upd();
+    sh.querySelector("#cCat").addEventListener("click",()=>{ if(!c && (segGet(sp)==="1"||segGet(sp)==="12")){ segSet(sp,["bollo","assicurazione"].includes(cat)?"12":"1"); upd(); } });
     sh.querySelector("#cSave").onclick=()=>{
       const v=num(sh.querySelector("#cAmt").value); if(v<=0){ toast("Inserisci l'importo."); return; }
-      const snap=snapshot(), x={cat,amount:r2(v),date:sh.querySelector("#cDate").value||today(),note:sh.querySelector("#cNote").value.trim()};
+      const snap=snapshot(), x={cat,amount:r2(v),date:sh.querySelector("#cDate").value||today(),note:sh.querySelector("#cNote").value.trim(),months:months()};
       if(c) Object.assign(c,x); else S.mine.costs.push(Object.assign({id:uid()},x));
       save(); closeSheet(); renderMine(); toast("Spesa salvata",()=>{ restore(snap); renderMine(); });
     };
@@ -1289,6 +1308,7 @@ function renderSync(){
 
 /* ================= boot ================= */
 function renderAll(){ renderHome(); renderMonth(); renderSettings(); renderSync(); renderMine(); if(!$("#sumYear").classList.contains("hidden")) renderYear(); }
+if(!S.mine.spreadMig){ S.mine.costs.forEach(c=>{ if(c.months==null && (c.cat==="bollo"||c.cat==="assicurazione")) c.months=12; }); S.mine.spreadMig=true; saveLocal(); }
 if(S.mine.odo.some(o=>o.rate==null||o.wear==null)){ S.mine.odo.forEach(o=>{ if(o.rate==null) o.rate=S.settings.fuel; if(o.wear==null) o.wear=S.settings.wear; }); saveLocal(); }
 hydrateIcons(); bindSeg(document);
 applyTheme();
