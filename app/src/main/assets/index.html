@@ -100,6 +100,8 @@ button{font:inherit;border:0;cursor:pointer;color:inherit;background:none}
 .item:active{background:var(--surface2)}
 .item .ic{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;flex:none;background:var(--acc-soft);color:var(--acc-ink)}
 .item .ic.fuel{background:var(--giada-soft);color:var(--giada)}
+.item .ic.extra{background:#F1EDFD;color:#7C3AED}
+[data-theme=dark] .item .ic.extra{background:#2A2145;color:#C4B5FD}
 .item .ic.toll{background:#E6F6EC;color:#15803D}
 [data-theme=dark] .item .ic.toll{background:#13301F;color:#4ADE80}
 .item .tx{flex:1;min-width:0}
@@ -285,7 +287,7 @@ nav button.on{color:var(--acc-ink);background:var(--acc-soft)}
   <div id="homeHero"></div>
   <div class="actions">
     <button class="action" id="actTrip"><div class="bubble"><svg class="i" data-i="car"></svg></div><b>Nuovo viaggio</b><span>Calcola i km in auto</span></button>
-    <button class="action orange" id="actExp"><div class="bubble"><svg class="i" data-i="fuel"></svg></div><b>Nuova spesa</b><span>Benzina o Telepass</span></button>
+    <button class="action orange" id="actExp"><div class="bubble"><svg class="i" data-i="fuel"></svg></div><b>Nuova spesa</b><span>Benzina, Telepass, extra</span></button>
   </div>
   <div class="sec-t" style="display:flex;justify-content:space-between;align-items:center">Percorsi e spese rapide <button class="link" id="manageRoutes" style="text-transform:none;letter-spacing:0">Modifica</button></div>
   <div id="routeBtns" class="routes"></div>
@@ -446,6 +448,8 @@ const dec=n=>String(n).replace(".",",");
 const today=()=>{ const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const who=p=>p==="G"?"Giada":"Luca";
+const TYPES={benzina:["Benzina","fuel","fuel"],telepass:["Telepass","toll","toll"],extra:["Extra","wrench","extra"]};
+const tName=t=>(TYPES[t]||TYPES.extra)[0], tIcon=t=>(TYPES[t]||TYPES.extra)[1], tCls=t=>(TYPES[t]||TYPES.extra)[2];
 const fmtDay=d=>new Date(d+"T12:00:00").toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long"});
 const fmtShort=d=>new Date(d+"T12:00:00").toLocaleDateString("it-IT",{day:"numeric",month:"short"});
 const MONTHS_S=["G","F","M","A","M","G","L","A","S","O","N","D"];
@@ -569,11 +573,12 @@ function calcPeriod(prefix){
   const solo=trips.filter(t=>t.soloG), kmG=solo.reduce((s,t)=>s+t.km,0);
   const fuelG=solo.reduce((s,t)=>s+t.km*t.fuel,0), wearG=solo.reduce((s,t)=>s+t.km*t.wear,0);
   const tpSolo=exps.filter(e=>e.type==="telepass"&&e.soloG).reduce((s,e)=>s+e.amount,0);
+  const exL=sum("extra","L"), exG=sum("extra","G"), exSolo=exps.filter(e=>e.type==="extra"&&e.soloG).reduce((s,e)=>s+e.amount,0), exS=exL+exG-exSolo;
   const fuelS=fuel-fuelG, wearS=wear-wearG, tpS=tpL+tpG-tpSolo;
-  const qFuel=fuelS/2+fuelG, qWear=wearS/2+wearG, qToll=tpS/2+tpSolo;
-  const car=fuel+wear, total=car+tpL+tpG, half=qFuel+qWear+qToll, paidG=tpG+bzG, balance=half-paidG;
-  const hasSolo=kmG>0||tpSolo>0;
-  return {trips,exps,km,fuel,wear,car,tpL,tpG,bzL,bzG,total,half,paidG,balance,kmG,fuelG,wearG,tpSolo,fuelS,wearS,tpS,qFuel,qWear,qToll,hasSolo};
+  const qFuel=fuelS/2+fuelG, qWear=wearS/2+wearG, qToll=tpS/2+tpSolo, qExtra=exS/2+exSolo;
+  const car=fuel+wear, total=car+tpL+tpG+exL+exG, half=qFuel+qWear+qToll+qExtra, paidG=tpG+bzG+exG, balance=half-paidG;
+  const hasSolo=kmG>0||tpSolo>0||exSolo>0;
+  return {trips,exps,km,fuel,wear,car,tpL,tpG,bzL,bzG,total,half,paidG,balance,kmG,fuelG,wearG,tpSolo,fuelS,wearS,tpS,qFuel,qWear,qToll,hasSolo,exL,exG,exSolo,exS,qExtra};
 }
 
 /* ================= state ================= */
@@ -610,8 +615,8 @@ function renderHome(){
   const rate=S.settings.fuel+S.settings.wear;
   $("#routeBtns").innerHTML = S.routes.length ? S.routes.map(r=> r.kind==="spesa"
     ? `<button class="route spesa" data-id="${r.id}">
-      <div class="ico">${ic(r.type==="benzina"?"fuel":"parking")}</div><b>${esc(r.name)}</b>
-      <div class="meta">${r.type==="benzina"?"Benzina":"Telepass"} · ${who(r.payer)}</div>
+      <div class="ico">${ic(r.type==="telepass"?"parking":tIcon(r.type))}</div><b>${esc(r.name)}</b>
+      <div class="meta">${tName(r.type)} · ${who(r.payer)}</div>
       <div class="cost num">${eur(r.amount)}</div></button>`
     : `<button class="route" data-id="${r.id}">
       <div class="ico">${ic("route")}</div><b>${esc(r.name)}</b>
@@ -731,28 +736,31 @@ function openTripSheet(){
 function openExpSheet(exp){
   const e=exp||{type:"benzina",payer:"L",amount:"",note:"",date:addDate.value||today()};
   openSheet(exp?"Modifica spesa":"Nuova spesa",`
-    <div class="field"><div class="seg" id="eType"><button data-v="benzina">${ic("fuel")}Benzina</button><button data-v="telepass">${ic("toll")}Telepass</button></div></div>
+    <div class="field"><div class="seg" id="eType"><button data-v="benzina">${ic("fuel")}Benzina</button><button data-v="telepass">${ic("toll")}Telepass</button><button data-v="extra">${ic("wrench")}Extra</button></div></div>
     <div class="field"><label>Importo</label><div class="suffix"><input id="eAmt" inputmode="decimal" placeholder="0,00" style="font-size:22px;font-weight:700"><i>€</i></div></div>
     <div class="field"><label>Pagata da</label><div class="seg who" id="ePayer"><button data-v="L">Luca</button><button data-v="G">Giada</button></div></div>
     <div class="row"><div class="field"><label>Data</label><input type="date" id="eDate"></div></div>
-    <label class="switch" id="eSoloRow" style="margin-top:-6px"><span>Spesa solo di Giada<br><small class="muted" style="font-weight:400;font-size:12.5px">Il Telepass è tutto a suo carico</small></span><input type="checkbox" id="eSoloG"></label>
-    <div class="field"><label>Nota (facoltativa)</label><input id="eNote" placeholder="es. distributore A4"></div>
+    <label class="switch" id="eSoloRow" style="margin-top:-6px"><span>Spesa solo di Giada<br><small class="muted" style="font-weight:400;font-size:12.5px">La spesa è tutta a suo carico</small></span><input type="checkbox" id="eSoloG"></label>
+    <div class="field"><label id="eNoteLbl">Nota (facoltativa)</label><input id="eNote" placeholder="es. distributore A4"></div>
     <div class="btn-row">${exp?`<button class="btn danger-soft" id="eDel" style="flex:0 0 auto">${ic("trash")}</button>`:""}<button class="btn" id="eSave">${ic("check")}${exp?"Salva modifiche":"Aggiungi spesa"}</button></div>
     ${exp?"":`<button class="btn plain block" id="eQuick" style="margin-top:10px">${ic("star")}Salva come spesa rapida</button>`}
   `, sh=>{
     segSet(sh.querySelector("#eType"),e.type); segSet(sh.querySelector("#ePayer"),e.payer);
     sh.querySelector("#eSoloG").checked=!!e.soloG;
-    const soloRow=()=>sh.querySelector("#eSoloRow").classList.toggle("hidden",segGet(sh.querySelector("#eType"))!=="telepass");
+    const soloRow=()=>{ const ty=segGet(sh.querySelector("#eType")); sh.querySelector("#eSoloRow").classList.toggle("hidden",ty==="benzina");
+      sh.querySelector("#eNoteLbl").textContent = ty==="extra"?"Descrizione":"Nota (facoltativa)";
+      sh.querySelector("#eNote").placeholder = ty==="extra"?"es. riparazione foratura":ty==="telepass"?"es. parcheggio Comasina":"es. distributore A4"; };
     sh.querySelector("#eType").addEventListener("change",soloRow); soloRow();
     sh.querySelector("#eAmt").value=e.amount===""?"":dec(e.amount); sh.querySelector("#eDate").value=e.date; sh.querySelector("#eNote").value=e.note||"";
     if(!exp) setTimeout(()=>sh.querySelector("#eAmt").focus(),300);
     sh.querySelector("#eSave").onclick=()=>{
       const amount=num(sh.querySelector("#eAmt").value); if(amount<=0){ toast("Inserisci l'importo."); return; }
       const ty=segGet(sh.querySelector("#eType"));
-      const v={type:ty,payer:segGet(sh.querySelector("#ePayer")),amount:r2(amount),date:sh.querySelector("#eDate").value||today(),note:sh.querySelector("#eNote").value.trim(),soloG:ty==="telepass"&&sh.querySelector("#eSoloG").checked};
+      if(ty==="extra" && !sh.querySelector("#eNote").value.trim()){ toast("Scrivi una descrizione, es. riparazione foratura."); sh.querySelector("#eNote").focus(); return; }
+      const v={type:ty,payer:segGet(sh.querySelector("#ePayer")),amount:r2(amount),date:sh.querySelector("#eDate").value||today(),note:sh.querySelector("#eNote").value.trim(),soloG:ty!=="benzina"&&sh.querySelector("#eSoloG").checked};
       const snap=snapshot();
       if(exp){ Object.assign(S.expenses.find(x=>x.id===exp.id),v); save(); toast("Spesa aggiornata",()=>restore(snap)); }
-      else { addExpense(v); toast(`Aggiunta: ${v.type==="benzina"?"Benzina":"Telepass"} ${eur(v.amount)} (${who(v.payer)})`,()=>restore(snap)); }
+      else { addExpense(v); toast(`Aggiunta: ${tName(v.type)} ${eur(v.amount)} (${who(v.payer)})`,()=>restore(snap)); }
       closeSheet(); renderAll();
     };
     const qb=sh.querySelector("#eQuick");
@@ -799,7 +807,7 @@ function renderList(){
   $("#list").innerHTML=Object.keys(byDay).map(d=>`<div class="day">${fmtDay(d)}</div><div class="group">`+byDay[d].map(({k,o})=>{
     if(k==="t"){ const tl=tollOf(o.id), cost=o.km*(o.fuel+o.wear)+(tl?tl.amount:0);
       return `<button class="item" data-t="${o.id}"><div class="ic">${ic("car")}</div><div class="tx"><b>${esc(o.name)}</b><span class="num">${o.soloG?`<i class="tag S" style="font-style:normal">Solo Giada</i> `:""}${kmf(o.km)}${tl?` · Telepass ${eur(tl.amount)} <i class="tag ${tl.payer}" style="font-style:normal">${who(tl.payer)}</i>`:""}</span></div><div class="am num">${eur(cost)}</div></button>`; }
-    return `<button class="item" data-e="${o.id}"><div class="ic ${o.type==="benzina"?"fuel":"toll"}">${ic(o.type==="benzina"?"fuel":"toll")}</div><div class="tx"><b>${o.type==="benzina"?"Benzina":"Telepass"}${o.note?" · "+esc(o.note):""}</b><span><i class="tag ${o.payer}" style="font-style:normal">${who(o.payer)}</i>${o.soloG?` <i class="tag S" style="font-style:normal">Solo Giada</i>`:""}</span></div><div class="am num">${eur(o.amount)}</div></button>`;
+    return `<button class="item" data-e="${o.id}"><div class="ic ${tCls(o.type)}">${ic(tIcon(o.type))}</div><div class="tx"><b>${o.type==="extra"&&o.note?esc(o.note):tName(o.type)+(o.note?" · "+esc(o.note):"")}</b><span><i class="tag ${o.payer}" style="font-style:normal">${who(o.payer)}</i>${o.soloG?` <i class="tag S" style="font-style:normal">Solo Giada</i>`:""}</span></div><div class="am num">${eur(o.amount)}</div></button>`;
   }).join("")+`</div>`).join("") + `<p class="note" style="text-align:center">Tocca un movimento per modificarlo o eliminarlo</p>`;
 }
 $("#list").addEventListener("click",e=>{
@@ -813,7 +821,8 @@ function summaryText(c, ym){
   const aF=c.km?c.fuel/c.km:S.settings.fuel, aW=c.km?c.wear/c.km:S.settings.wear;
   let s=`🚗 Spese auto – ${monthLabel(ym)}\n\nKm: ${kmf(c.km)} (${c.trips.length} viaggi)\n`;
   s+=`• Benzina: ${kmf(c.km)} × ${rate(aF)} = ${eur(c.fuel)}\n• Usura: ${kmf(c.km)} × ${rate(aW)} = ${eur(c.wear)}\n• Telepass: ${eur(c.tpL+c.tpG)}\n`;
-  if(c.hasSolo){ s+=`Totale ${eur(c.total)}\nQuota Giada: metà delle spese comuni ${eur(c.total/2-(c.fuelG+c.wearG+c.tpSolo)/2)} + spese solo sue ${eur(c.fuelG+c.wearG+c.tpSolo)} = ${eur(c.half)}\n`; }
+  c.exps.filter(e=>e.type==="extra").forEach(e=>{ s+=`• ${e.note||"Extra"}: ${eur(e.amount)}${e.soloG?" (solo Giada)":""}\n`; });
+  if(c.hasSolo){ s+=`Totale ${eur(c.total)}\nQuota Giada: metà delle spese comuni ${eur(c.total/2-(c.fuelG+c.wearG+c.tpSolo+c.exSolo)/2)} + spese solo sue ${eur(c.fuelG+c.wearG+c.tpSolo+c.exSolo)} = ${eur(c.half)}\n`; }
   else s+=`Totale ${eur(c.total)} → metà ${eur(c.half)}\n`;
   if(c.paidG>0) s+=`Già pagato da Giada: ${eur(c.paidG)}\n`;
   s+="\n"+(Math.abs(c.balance)<0.005?"Siete pari ✅": c.balance>0?`👉 Giada deve dare a Luca ${eur(c.balance)}`:`👉 Luca deve dare a Giada ${eur(-c.balance)}`);
@@ -832,6 +841,7 @@ function renderMonth(){
     <tr><td>Usura <span class="muted" style="font-size:13px">${rate(aW)}</span></td><td class="n">${eur(c.wear)}</td></tr>
     <tr><td>Telepass</td><td class="n">${eur(tp)}</td></tr>
     ${tp>0?`<tr class="sub"><td>Luca ${eur(c.tpL)} · Giada ${eur(c.tpG)}</td><td></td></tr>`:""}
+    ${c.exL+c.exG>0?`<tr><td>Extra</td><td class="n">${eur(c.exL+c.exG)}</td></tr>`+c.exps.filter(e=>e.type==="extra").map(e=>`<tr class="sub"><td>${esc(e.note||"Extra")} · ${who(e.payer)}${e.soloG?" · solo Giada":""}</td><td class="n" style="font-weight:500">${eur(e.amount)}</td></tr>`).join(""):""}
     <tr class="tot"><td>Totale</td><td class="n">${eur(c.total)}</td></tr></table></div>
   <div class="card"><div class="card-h"><h2>Quota di Giada</h2><span class="tag G">${c.hasSolo?"50% + solo sue":"50%"}</span></div><table class="tbl">
     <tr><td>Benzina</td><td class="n">${eur(c.qFuel)}</td></tr>
@@ -840,9 +850,11 @@ function renderMonth(){
     ${c.wearG>0?`<tr class="sub"><td>metà comuni ${eur(c.wearS/2)} · solo Giada ${eur(c.wearG)}</td><td></td></tr>`:`<tr class="sub"><td>${kmf(c.km)} × ${rate(aW/2)}</td><td></td></tr>`}
     <tr><td>Telepass</td><td class="n">${eur(c.qToll)}</td></tr>
     ${c.tpSolo>0?`<tr class="sub"><td>metà comuni ${eur(c.tpS/2)} · solo Giada ${eur(c.tpSolo)}</td><td></td></tr>`:""}
+    ${c.exL+c.exG>0?`<tr><td>Extra</td><td class="n">${eur(c.qExtra)}</td></tr>${c.exSolo>0?`<tr class="sub"><td>metà comuni ${eur(c.exS/2)} · solo Giada ${eur(c.exSolo)}</td><td></td></tr>`:""}`:""}
     <tr class="tot"><td>Quota</td><td class="n">${eur(c.half)}</td></tr>
     ${c.tpG>0?`<tr class="minus"><td>Telepass già pagato</td><td class="n">${eur(-c.tpG)}</td></tr>`:""}
     ${c.bzG>0?`<tr class="minus"><td>Benzina già pagata</td><td class="n">${eur(-c.bzG)}</td></tr>`:""}
+    ${c.exG>0?`<tr class="minus"><td>Extra già pagati</td><td class="n">${eur(-c.exG)}</td></tr>`:""}
     <tr class="tot"><td>${Math.abs(b)<0.005?"Saldo":b>0?"Da dare a Luca":"Luca restituisce"}</td><td class="n">${eur(Math.abs(b))}</td></tr></table>
     ${c.bzL>0?`<p class="note">Rifornimenti di Luca nel mese: ${eur(c.bzL)}. Sono già compresi nel costo benzina al km e non cambiano il saldo.</p>`:""}
     <p class="note">Se fa benzina Giada, l'importo viene scalato dalla sua quota.${c.hasSolo?` I viaggi e i Telepass segnati "solo Giada" sono interamente a suo carico.`:""}</p></div>
@@ -867,7 +879,7 @@ function renderYear(){
     <div class="card chart"><div class="card-h"><h2>Spese per mese</h2><span class="muted" style="font-size:12px">€ · tocca un mese</span></div>
       <svg viewBox="0 0 ${W} ${H}"><defs><linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--acc2)"/><stop offset="1" stop-color="var(--acc)"/></linearGradient></defs>${bars}</svg></div>
     <div class="card"><div class="card-h"><h2>Totale ${curY}</h2></div><table class="tbl">
-      <tr><td>Benzina</td><td class="n">${eur(y.fuel)}</td></tr><tr><td>Usura</td><td class="n">${eur(y.wear)}</td></tr><tr><td>Telepass</td><td class="n">${eur(y.tpL+y.tpG)}</td></tr>
+      <tr><td>Benzina</td><td class="n">${eur(y.fuel)}</td></tr><tr><td>Usura</td><td class="n">${eur(y.wear)}</td></tr><tr><td>Telepass</td><td class="n">${eur(y.tpL+y.tpG)}</td></tr>${y.exL+y.exG>0?`<tr><td>Extra</td><td class="n">${eur(y.exL+y.exG)}</td></tr>`:""}
       <tr class="tot"><td>Totale</td><td class="n">${eur(y.total)}</td></tr><tr><td>Quota di Giada</td><td class="n">${eur(y.half)}</td></tr></table>
       <p class="note">Media mensile: ${eur(y.total/Math.max(1,months.filter(m=>m.total>0).length))} sui mesi con movimenti.</p></div>`;
   $("#yearView svg").addEventListener("click",e=>{ const g=e.target.closest("[data-ym]"); if(!g) return; curYM=g.dataset.ym; segSet($("#sumMode"),"m"); setSumMode("m"); renderMonth(); });
@@ -882,7 +894,7 @@ function renderSettings(){
   segSet($("#setTollPayer"),S.settings.tollPayer); segSet($("#setTheme"),S.settings.theme); segSet($("#setMe"),S.settings.me||"L"); applyMe();
   $("#setTotal").textContent=rate(S.settings.fuel+S.settings.wear);
   $("#routeList").innerHTML = S.routes.length ? S.routes.map((r,i)=>`<div class="rrow">
-      <div class="tx"><b>${esc(r.name)}</b><span class="num">${r.kind==="spesa"?(r.type==="benzina"?"Benzina":"Telepass")+" "+eur(r.amount)+" · "+who(r.payer):kmf(r.km)+(r.toll>0?" · Telepass "+eur(r.toll):"")}</span></div>
+      <div class="tx"><b>${esc(r.name)}</b><span class="num">${r.kind==="spesa"?tName(r.type)+" "+eur(r.amount)+" · "+who(r.payer):kmf(r.km)+(r.toll>0?" · Telepass "+eur(r.toll):"")}</span></div>
       <button class="icon-btn" data-mv="${i}:-1" ${i===0?"disabled":""}>${ic("up")}</button>
       <button class="icon-btn" data-mv="${i}:1" ${i===S.routes.length-1?"disabled":""}>${ic("down")}</button>
       <button class="icon-btn" data-ed="${r.id}">${ic("edit")}</button></div>`).join("")
@@ -910,7 +922,7 @@ function openRouteSheet(route, preset){
       <p class="note" style="margin:-4px 2px 14px">Se è un andata e ritorno, inserisci i km e il Telepass totali. Per calcolare i km usa <b>Nuovo viaggio</b> → Salva come percorso rapido.</p>
     </div>
     <div id="rSpesa">
-      <div class="field"><div class="seg" id="rType"><button data-v="telepass">${ic("toll")}Telepass</button><button data-v="benzina">${ic("fuel")}Benzina</button></div></div>
+      <div class="field"><div class="seg" id="rType"><button data-v="telepass">${ic("toll")}Telepass</button><button data-v="benzina">${ic("fuel")}Benzina</button><button data-v="extra">${ic("wrench")}Extra</button></div></div>
       <div class="row"><div class="field"><label>Importo</label><div class="suffix"><input id="rAmt" inputmode="decimal" placeholder="0,00"><i>€</i></div></div>
       <div class="field"><label>Pagata da</label><div class="seg who" id="rPayer"><button data-v="L">Luca</button><button data-v="G">Giada</button></div></div></div>
       <p class="note" style="margin:-4px 2px 14px">Con un tocco dalla Home registra questa spesa nella data scelta, senza km. Utile per parcheggi o pedaggi fissi.</p>
@@ -986,6 +998,7 @@ function sharedIn(r0,r1){
   const sht=trips.filter(t=>!t.soloG);
   return { km:trips.reduce((s,t)=>s+t.km,0), fuel:sht.reduce((s,t)=>s+t.km*t.fuel,0), wear:sht.reduce((s,t)=>s+t.km*t.wear,0),
            tS:tolls.filter(e=>!e.soloG).reduce((s,e)=>s+e.amount,0),
+           exS:S.expenses.filter(e=>e.type==="extra"&&!e.soloG&&inR(e.date)).reduce((s,e)=>s+e.amount,0),
            tpL:tolls.filter(e=>e.payer==="L").reduce((s,e)=>s+e.amount,0), tpG:tolls.filter(e=>e.payer==="G").reduce((s,e)=>s+e.amount,0) };
 }
 function calcMine(r0,r1){
@@ -1001,11 +1014,11 @@ function calcMine(r0,r1){
   });
   const tollShared=sh.tS/2;
   const costs=S.mine.costs.filter(c=>{ const t=dms(c.date); return t>=r0&&t<r1; });
-  const other=costs.reduce((s,c)=>s+c.amount,0);
+  const extraShared=sh.exS/2, other=costs.reduce((s,c)=>s+c.amount,0)+extraShared;
   const days=(r1-r0)/DAY;
   return {fuelRate:rate, wearRate:o.wear, wearShared, wearMine, wear:wearShared+wearMine, totKm, sharedKm:sh.km, myKm, odoCov:o.cov/days, fuelShared, fuelMine, fuel:fuelShared+fuelMine,
           bill, billSharedL, tollMine, tollShared, toll:tollMine+tollShared, billCov:billCov/days,
-          costs, other, total:fuelShared+fuelMine+wearShared+wearMine+tollMine+tollShared+other};
+          costs, extraShared, other, total:fuelShared+fuelMine+wearShared+wearMine+tollMine+tollShared+other};
 }
 function accHTML(icon,cls,title,sub,amt,body,open){
   return `<details class="acc"${open?" open":""}><summary><div class="ic ${cls}">${ic(icon)}</div><div class="tx"><b>${title}</b><span>${sub}</span></div><div class="am num">${amt}</div>${ic("chevR","chev")}</summary><div class="body">${body}</div></details>`;
@@ -1057,10 +1070,11 @@ function renderMine(){
      +ln(`${kmf(c.myKm)} × ${rate(c.wearRate)}`,"","muted"));
   // altre spese
   const byCat={}; c.costs.forEach(x=>byCat[x.cat]=(byCat[x.cat]||0)+x.amount);
-  h+=accHTML("wallet","c-oth","Altre spese", c.costs.length? Object.keys(byCat).map(k=>COST_CATS[k][0]).join(", ") : "Bollo, assicurazione, interventi…", eur(c.other),
-     c.costs.length? (isY? Object.keys(byCat).map(k=>ln(COST_CATS[k][0],eur(byCat[k]))).join("") :
+  const exLine = c.extraShared>0 ? ln("Spese extra con Giada (tua metà)",eur(c.extraShared)) : "";
+  h+=accHTML("wallet","c-oth","Altre spese", c.costs.length? Object.keys(byCat).map(k=>COST_CATS[k][0]).join(", ")+(c.extraShared>0?", extra":"") : (c.extraShared>0?"Extra con Giada":"Bollo, assicurazione, interventi…"), eur(c.other),
+     exLine + (c.costs.length? (isY? Object.keys(byCat).map(k=>ln(COST_CATS[k][0],eur(byCat[k]))).join("") :
        c.costs.sort((a,b)=>a.date.localeCompare(b.date)).map(x=>`<div class="ln" data-cost="${x.id}" style="cursor:pointer"><span>${COST_CATS[x.cat][0]}${x.note?" · "+esc(x.note):""}<br><small class="muted">${fmtShort(x.date)}</small></span><span>${eur(x.amount)}</span></div>`).join(""))
-     : `<div class="ln muted"><span>Nessuna spesa ${isY?"nell'anno":"nel mese"}</span><span></span></div>`);
+     : (exLine?"":`<div class="ln muted"><span>Nessuna spesa ${isY?"nell'anno":"nel mese"}</span><span></span></div>`)));
   // inserimenti
   if(!isY){
     const odoM=S.mine.odo.filter(o=>{ const t=dms(o.date); return t>=r0&&t<r1; });
